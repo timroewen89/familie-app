@@ -28,6 +28,16 @@
   display: none !important;
 }
 
+/* Zichtbare focus voor toetsenbordgebruik (muis/tik laat 'm weg) */
+:focus-visible {
+  outline: 3px solid var(--g-blue-dark);
+  outline-offset: 2px;
+}
+
+.event:focus-visible {
+  outline-offset: -1px;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -360,8 +370,8 @@ main {
   font: inherit;
   font-size: 0.85rem;
   font-weight: 500;
-  min-height: 36px;
-  padding: 0.25rem 0.9rem;
+  min-height: 44px;
+  padding: 0.35rem 0.9rem;
   border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
@@ -634,8 +644,8 @@ main {
 /* Picnic-zoekknop per item (Picnic-rood) */
 .picnic-btn {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
   background: #e1171e;
@@ -712,8 +722,8 @@ main {
 }
 
 .picnic-step-btn {
-  min-height: 40px;
-  min-width: 40px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 0.35rem;
   border-radius: 50%;
 }
@@ -721,6 +731,36 @@ main {
 .picnic-step-btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Niet-blokkerende toast onderin het scherm */
+#app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  transform: translate(-50%, 1rem);
+  max-width: min(90vw, 26rem);
+  background: #202124;
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 50;
+}
+
+#app-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (min-width: 800px) {
+  #app-toast {
+    bottom: 1.5rem;
+  }
 }
 
 .picnic-count {

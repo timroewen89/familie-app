@@ -181,7 +181,7 @@ const Cal = (() => {
     } catch (err) {
       connected = false;
       updateConnectButton();
-      setStatus(`Verbinden mislukt: ${err?.message || 'onbekende fout'}.`, true);
+      setStatus(`Verbinden mislukt: ${App.friendlyError(err)}.`, true);
     }
   }
 
@@ -276,7 +276,7 @@ const Cal = (() => {
       }
       App.render();
     } catch (err) {
-      setStatus(`Agenda laden mislukt: ${err.message || 'onbekende fout'}`, true);
+      setStatus(`Agenda laden mislukt: ${App.friendlyError(err)}`, true);
     }
   }
 

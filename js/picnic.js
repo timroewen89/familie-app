@@ -279,7 +279,7 @@ const Picnic = (() => {
         finishLogin();
       }
     } catch (err) {
-      setLoginError(`Inloggen mislukt: ${err.message || 'onbekende fout'}`);
+      setLoginError(`Inloggen mislukt: ${App.friendlyError(err)}`);
     }
   }
 
@@ -328,13 +328,17 @@ const Picnic = (() => {
       for (const unit of units) {
         results.appendChild(buildResultRow(unit));
       }
+      // Focus naar het eerste resultaat zodat toetsenbord/VoiceOver bij de
+      // resultaten begint in plaats van bij de 'Klaar'-knop.
+      const firstAction = results.querySelector('.picnic-add, .picnic-step-btn');
+      if (firstAction) firstAction.focus();
     } catch (err) {
       results.textContent = '';
       const error = document.createElement('p');
       error.className = 'status error';
       error.textContent = err.auth
         ? 'Je Picnic-sessie is verlopen. Sluit dit venster en probeer opnieuw om in te loggen.'
-        : `Zoeken mislukt: ${err.message || 'onbekende fout'} (mogelijk is de Picnic-API gewijzigd)`;
+        : `Zoeken mislukt: ${App.friendlyError(err)}`;
       results.appendChild(error);
     }
   }
@@ -421,7 +425,7 @@ const Picnic = (() => {
         inBasket += delta;
         syncListItem();
       } catch (err) {
-        alert(`Mandje bijwerken mislukt: ${err.message || 'onbekende fout'}`);
+        App.toast(`Mandje bijwerken mislukt: ${App.friendlyError(err)}`);
       } finally {
         busy = false;
         actions.classList.remove('busy');

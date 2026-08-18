@@ -184,10 +184,13 @@ const Tags = (() => {
       chip.textContent = name;
       const active = filter.has(name);
       chip.classList.toggle('active', active);
+      chip.setAttribute('aria-pressed', active ? 'true' : 'false');
       if (active) {
-        chip.style.background = color.solid;
-        chip.style.borderColor = color.solid;
-        chip.style.color = color.fg === '#b06000' ? '#202124' : '#ffffff';
+        // color.fg is de donkere variant; wit daarop haalt WCAG AA (>=4.5:1),
+        // in tegenstelling tot color.solid (rood/groen faalden).
+        chip.style.background = color.fg;
+        chip.style.borderColor = color.fg;
+        chip.style.color = '#ffffff';
       } else {
         chip.style.background = color.bg;
         chip.style.borderColor = 'transparent';
