@@ -93,8 +93,17 @@ const App = (() => {
 
     if (event.id) {
       el.setAttribute('role', 'button');
+      el.tabIndex = 0; // focusbaar voor toetsenbord/VoiceOver
+      el.setAttribute('aria-label', `${event.title}, tik om personen te taggen`);
       el.title = 'Tik om personen te taggen';
-      el.addEventListener('click', () => Tags.openDialog(event.id, event.title));
+      const open = () => Tags.openDialog(event.id, event.title);
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      });
     }
     return el;
   }
@@ -134,8 +143,12 @@ const App = (() => {
 
   function render() {
     document.getElementById('week-label').textContent = formatLabel();
-    document.getElementById('btn-view-day').classList.toggle('active', viewMode === 'day');
-    document.getElementById('btn-view-week').classList.toggle('active', viewMode === 'week');
+    const dayBtn = document.getElementById('btn-view-day');
+    const weekBtn = document.getElementById('btn-view-week');
+    dayBtn.classList.toggle('active', viewMode === 'day');
+    weekBtn.classList.toggle('active', viewMode === 'week');
+    dayBtn.setAttribute('aria-pressed', viewMode === 'day' ? 'true' : 'false');
+    weekBtn.setAttribute('aria-pressed', viewMode === 'week' ? 'true' : 'false');
     Tags.renderFilterBar();
 
     const grid = document.getElementById('week-grid');
@@ -207,8 +220,11 @@ const App = (() => {
     localStorage.setItem(TAB_KEY, tab);
     document.getElementById('agenda-panel').hidden = tab !== 'agenda';
     document.getElementById('shopping-panel').hidden = tab !== 'shopping';
-    document.getElementById('tab-agenda').classList.toggle('active', tab === 'agenda');
-    document.getElementById('tab-shopping').classList.toggle('active', tab === 'shopping');
+    for (const [id, key] of [['tab-agenda', 'agenda'], ['tab-shopping', 'shopping']]) {
+      const btn = document.getElementById(id);
+      btn.classList.toggle('active', tab === key);
+      btn.setAttribute('aria-pressed', tab === key ? 'true' : 'false');
+    }
   }
 
   function initTabs() {
@@ -234,7 +250,35 @@ const App = (() => {
     return new Date(currentDate);
   }
 
-  return { init, render, getWeekRange, getCurrentDate, dateKey, parseDateKey };
+  /** Zet ruwe fetch-fouten om in een begrijpelijke Nederlandse melding. */
+  function friendlyError(err) {
+    const msg = (err && err.message) || '';
+    if (!navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(msg)) {
+      return 'je bent offline of de verbinding werd onderbroken';
+    }
+    return msg || 'onbekende fout';
+  }
+
+  // ---- Toast: niet-blokkerende melding (i.p.v. alert(), fijner in een PWA) ----
+
+  let toastTimer = null;
+
+  function toast(message) {
+    let el = document.getElementById('app-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'app-toast';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  return { init, render, getWeekRange, getCurrentDate, dateKey, parseDateKey, toast, friendlyError };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {

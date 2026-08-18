@@ -53,12 +53,12 @@ const Tags = (() => {
   function setMembers(newMembers) {
     members = newMembers.map((m) => m.trim()).filter(Boolean);
     if (members.length === 0) members = [...DEFAULT_MEMBERS];
-    // Filter- en tagvermeldingen van verwijderde leden opruimen.
+    // Filter (UI-staat) opschonen tot bestaande leden. Tag-vermeldingen worden
+    // NIET verwijderd: een naam die (nog) niet in members staat kan een
+    // hernoeming of tijdelijke verwijdering zijn — bij terugzetten van de naam
+    // komen de tags weer tevoorschijn. Onbekende namen worden alleen niet
+    // getoond (zie chipsFor).
     filter = new Set([...filter].filter((f) => members.includes(f)));
-    for (const id of Object.keys(tags)) {
-      tags[id] = tags[id].filter((name) => members.includes(name));
-      if (tags[id].length === 0) delete tags[id];
-    }
     save();
   }
 
@@ -84,7 +84,9 @@ const Tags = (() => {
   }
 
   function chipsFor(eventId) {
-    const names = getTags(eventId);
+    // Alleen chips van huidige leden tonen; behouden tags van verwijderde/
+    // hernoemde leden blijven bewaard maar worden niet weergegeven.
+    const names = getTags(eventId).filter((name) => members.includes(name));
     if (names.length === 0) return null;
     const wrap = document.createElement('div');
     wrap.className = 'event-tags';
@@ -182,10 +184,13 @@ const Tags = (() => {
       chip.textContent = name;
       const active = filter.has(name);
       chip.classList.toggle('active', active);
+      chip.setAttribute('aria-pressed', active ? 'true' : 'false');
       if (active) {
-        chip.style.background = color.solid;
-        chip.style.borderColor = color.solid;
-        chip.style.color = color.fg === '#b06000' ? '#202124' : '#ffffff';
+        // color.fg is de donkere variant; wit daarop haalt WCAG AA (>=4.5:1),
+        // in tegenstelling tot color.solid (rood/groen faalden).
+        chip.style.background = color.fg;
+        chip.style.borderColor = color.fg;
+        chip.style.color = '#ffffff';
       } else {
         chip.style.background = color.bg;
         chip.style.borderColor = 'transparent';

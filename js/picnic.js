@@ -102,6 +102,7 @@ const Picnic = (() => {
   async function request(method, path, body, withPicnicHeaders = false, includeAuth = true) {
     const headers = { 'Content-Type': 'application/json; charset=UTF-8' };
     if (includeAuth && config.authKey) headers['x-picnic-auth'] = config.authKey;
+    if (config.proxyKey) headers['x-proxy-key'] = config.proxyKey;
     if (withPicnicHeaders) Object.assign(headers, PICNIC_HEADERS);
 
     const response = await fetch(proxyBase() + API_PATH + path, {
@@ -110,7 +111,10 @@ const Picnic = (() => {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    if (response.status === 401 || response.status === 403) {
+    // Inloggen/2FA horen NIET als 'sessie verlopen' behandeld te worden: daar
+    // betekent een 401/403 juist onjuiste gegevens of een verkeerde code.
+    const isAuthFlow = path.startsWith('/user/login') || path.startsWith('/user/2fa');
+    if (!isAuthFlow && (response.status === 401 || response.status === 403)) {
       config.authKey = null;
       save();
       const err = new Error('je Picnic-sessie is verlopen — log opnieuw in');
@@ -275,7 +279,7 @@ const Picnic = (() => {
         finishLogin();
       }
     } catch (err) {
-      setLoginError(`Inloggen mislukt: ${err.message || 'onbekende fout'}`);
+      setLoginError(`Inloggen mislukt: ${App.friendlyError(err)}`);
     }
   }
 
@@ -324,13 +328,17 @@ const Picnic = (() => {
       for (const unit of units) {
         results.appendChild(buildResultRow(unit));
       }
+      // Focus naar het eerste resultaat zodat toetsenbord/VoiceOver bij de
+      // resultaten begint in plaats van bij de 'Klaar'-knop.
+      const firstAction = results.querySelector('.picnic-add, .picnic-step-btn');
+      if (firstAction) firstAction.focus();
     } catch (err) {
       results.textContent = '';
       const error = document.createElement('p');
       error.className = 'status error';
       error.textContent = err.auth
         ? 'Je Picnic-sessie is verlopen. Sluit dit venster en probeer opnieuw om in te loggen.'
-        : `Zoeken mislukt: ${err.message || 'onbekende fout'} (mogelijk is de Picnic-API gewijzigd)`;
+        : `Zoeken mislukt: ${App.friendlyError(err)}`;
       results.appendChild(error);
     }
   }
@@ -344,9 +352,9 @@ const Picnic = (() => {
       img.className = 'picnic-result-img';
       img.loading = 'lazy';
       img.alt = '';
-      // CORS-modus: zo stuurt de browser de Origin-header mee en laat de
-      // proxy (die op origin controleert) de afbeelding door. Een gewone
-      // <img> stuurt geen Origin en zou een 403 krijgen.
+      // CORS-modus zodat de browser het antwoord van de proxy accepteert. De
+      // afbeeldingsroute in de Worker is bewust publiek (geen origin- of
+      // sleutelcontrole): productfoto's zijn geen credentials.
       img.crossOrigin = 'anonymous';
       img.src = `${proxyBase()}/static/images/${encodeURIComponent(unit.image_id)}/small.png`;
       // Als de afbeelding niet laadt (bijv. gewijzigde Picnic-API), gewoon weglaten.
@@ -378,6 +386,7 @@ const Picnic = (() => {
     const actions = document.createElement('div');
     actions.className = 'picnic-actions';
     let inBasket = 0;
+    let busy = false; // blokkeert ook toetsenbord-activatie tijdens een lopende call
     const maxCount = Number(unit.max_count) > 0 ? Number(unit.max_count) : 99;
     // Gekoppeld lijstje-item (alleen bij zoeken vanuit het invoerveld).
     const addToList = linkToList;
@@ -404,6 +413,11 @@ const Picnic = (() => {
     }
 
     async function mutate(delta) {
+      if (busy) return;
+      // Grenzen bewaken: nooit onder 0 of boven het maximum.
+      if (delta < 0 && inBasket <= 0) return;
+      if (delta > 0 && inBasket >= maxCount) return;
+      busy = true;
       actions.classList.add('busy');
       try {
         if (delta > 0) await addToCart(unit.id, 1);
@@ -411,10 +425,12 @@ const Picnic = (() => {
         inBasket += delta;
         syncListItem();
       } catch (err) {
-        alert(`Mandje bijwerken mislukt: ${err.message || 'onbekende fout'}`);
+        App.toast(`Mandje bijwerken mislukt: ${App.friendlyError(err)}`);
+      } finally {
+        busy = false;
+        actions.classList.remove('busy');
+        render();
       }
-      actions.classList.remove('busy');
-      render();
     }
 
     function stepButton(kind, label, delta, disabled) {
@@ -474,19 +490,23 @@ const Picnic = (() => {
     load();
 
     document.getElementById('input-picnic-url').value = config.proxyUrl || '';
+    document.getElementById('input-picnic-key').value = config.proxyKey || '';
     document.getElementById('settings-form').addEventListener('submit', () => {
       const newUrl = document.getElementById('input-picnic-url').value.trim();
+      const newKey = document.getElementById('input-picnic-key').value.trim();
       if (newUrl !== (config.proxyUrl || '')) {
         config.proxyUrl = newUrl || null;
         if (!newUrl) config.authKey = null;
-        save();
       }
+      config.proxyKey = newKey || null;
+      save();
       updateSettingsStatus();
       updateQuickButton();
       Shopping.rerender();
     });
     document.getElementById('btn-settings').addEventListener('click', () => {
       document.getElementById('input-picnic-url').value = config.proxyUrl || '';
+      document.getElementById('input-picnic-key').value = config.proxyKey || '';
       updateSettingsStatus();
     });
     document.getElementById('btn-picnic-logout').addEventListener('click', () => {

@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Content-Security-Policy: beperkt waar scripts vandaan mogen komen en —
+       belangrijker — waarheen de app verbinding mag maken (connect-src), zodat
+       een eventuele XSS het Google- of Picnic-token niet naar een vreemde
+       server kan sturen. GitHub Pages kan geen HTTP-headers zetten; als meta
+       werkt het ook. Gebruik je een Picnic-proxy op een eigen domein (geen
+       *.workers.dev), voeg dat domein dan toe aan connect-src en img-src. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://*.workers.dev; img-src 'self' data: https://*.workers.dev; style-src 'self' 'unsafe-inline'; frame-src https://accounts.google.com https://content.googleapis.com; base-uri 'none'; object-src 'none'; manifest-src 'self'">
   <title>Familie App</title>
   <meta name="theme-color" content="#1a73e8">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -75,15 +82,15 @@
         <button id="btn-prev" class="btn nav-arrow" aria-label="Vorige">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
         </button>
-        <div class="week-label" id="week-label"></div>
+        <div class="week-label" id="week-label" aria-live="polite"></div>
         <button id="btn-next" class="btn nav-arrow" aria-label="Volgende">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>
       </div>
 
-      <div id="filter-bar" class="filter-bar" aria-label="Filter op gezinslid"></div>
+      <div id="filter-bar" class="filter-bar" role="group" aria-label="Filter op gezinslid"></div>
 
-      <p id="calendar-status" class="status" hidden></p>
+      <p id="calendar-status" class="status" role="status" aria-live="polite" hidden></p>
 
       <div class="week-grid" id="week-grid"></div>
       <p class="swipe-hint">Tip: veeg naar links of rechts om te bladeren. Tik op een afspraak om personen te taggen.</p>
@@ -149,6 +156,10 @@
         Proxy-URL
         <input type="url" id="input-picnic-url" placeholder="https://picnic-proxy.jouwnaam.workers.dev">
       </label>
+      <label>
+        Proxy-sleutel
+        <input type="password" id="input-picnic-key" autocomplete="off" placeholder="zelfde waarde als PROXY_KEY in de Worker">
+      </label>
       <p class="hint" id="picnic-status"></p>
       <button type="button" class="btn btn-ghost" id="btn-picnic-logout" hidden>Picnic-sessie wissen</button>
 
@@ -207,13 +218,13 @@
         </div>
       </form>
     </div>
-    <p id="picnic-login-error" class="status error" hidden></p>
+    <p id="picnic-login-error" class="status error" role="alert" hidden></p>
   </dialog>
 
   <!-- Picnic: product zoeken en aan het mandje toevoegen -->
   <dialog id="picnic-search-dialog">
     <h2 id="picnic-search-title">Picnic</h2>
-    <div id="picnic-results" class="picnic-results"></div>
+    <div id="picnic-results" class="picnic-results" role="status" aria-live="polite"></div>
     <div class="dialog-buttons">
       <button type="button" class="btn btn-primary" id="btn-picnic-search-close">Klaar</button>
     </div>
@@ -244,7 +255,7 @@
       </div>
       <p class="field-label">Personen (optioneel)</p>
       <div id="event-tags" class="tags-options"></div>
-      <p id="event-error" class="status error" hidden></p>
+      <p id="event-error" class="status error" role="alert" hidden></p>
       <div class="dialog-buttons">
         <button type="button" class="btn btn-ghost" id="btn-event-cancel">Annuleren</button>
         <button type="submit" class="btn btn-primary">Toevoegen</button>

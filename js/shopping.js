@@ -66,8 +66,8 @@ const Shopping = (() => {
     // behalve als het item al is afgevinkt (dan is het gewoon gekocht).
     if (item?.picnicId && item.picnicCount > 0 && !item.done) {
       Picnic.removeFromBasket(item.picnicId, item.picnicCount).catch((err) => {
-        alert(`Let op: "${item.name}" is van het lijstje gehaald, maar kon niet uit je `
-          + `Picnic-mandje verwijderd worden (${err.message || 'onbekende fout'}).`);
+        App.toast(`"${item.name}" is van de lijst, maar kon niet uit je Picnic-mandje `
+          + `verwijderd worden (${App.friendlyError(err)}).`);
       });
     }
   }
@@ -117,12 +117,20 @@ const Shopping = (() => {
     }
   }
 
+  let shareFlashTimer = null;
+  let shareOriginalHtml = null;
+
   function flashShareButton(message) {
-    // innerHTML herstellen, want de knop bevat naast tekst ook een SVG-icoon.
     const btn = document.getElementById('btn-share-list');
-    const original = btn.innerHTML;
+    // Bij een snelle tweede klik het echte origineel bewaren (niet de flash),
+    // en de lopende timer resetten zodat de knop niet blijft hangen.
+    if (shareFlashTimer === null) shareOriginalHtml = btn.innerHTML;
+    else clearTimeout(shareFlashTimer);
     btn.textContent = message;
-    setTimeout(() => { btn.innerHTML = original; }, 2000);
+    shareFlashTimer = setTimeout(() => {
+      btn.innerHTML = shareOriginalHtml;
+      shareFlashTimer = null;
+    }, 2000);
   }
 
   function render() {
