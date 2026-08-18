@@ -351,7 +351,8 @@ const Picnic = (() => {
     const add = document.createElement('button');
     add.type = 'button';
     add.className = 'btn btn-primary picnic-add';
-    add.textContent = '＋ Mandje';
+    const addLabel = `${Icons.html('plus')}Mandje`;
+    add.innerHTML = addLabel;
     add.addEventListener('click', async () => {
       add.disabled = true;
       add.textContent = 'Bezig…';
@@ -361,7 +362,7 @@ const Picnic = (() => {
         add.classList.add('picnic-added');
       } catch (err) {
         add.disabled = false;
-        add.textContent = '＋ Mandje';
+        add.innerHTML = addLabel;
         alert(`Toevoegen mislukt: ${err.message || 'onbekende fout'}`);
       }
     });
