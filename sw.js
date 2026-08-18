@@ -3,7 +3,7 @@
  * en offline blijft werken (de boodschappenlijst werkt dan gewoon door;
  * alleen de Google Calendar-data vereist internet).
  */
-const CACHE_NAME = 'familie-app-v20';
+const CACHE_NAME = 'familie-app-v21';
 const APP_SHELL = [
   './',
   'index.html',
@@ -18,6 +18,7 @@ const APP_SHELL = [
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -36,21 +37,34 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const req = event.request;
+  const url = new URL(req.url);
   // Alleen eigen bestanden cachen; Google API's en login altijd via het netwerk.
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // Stale-while-revalidate: direct uit cache, op de achtergrond verversen.
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cached = await cache.match(event.request);
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response.ok) cache.put(event.request, response.clone());
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(req);
+    const fromNetwork = fetch(req).then((response) => {
+      if (response.ok) cache.put(req, response.clone());
+      return response;
+    });
+
+    // Stale-while-revalidate: uit cache serveren, op de achtergrond verversen.
+    if (cached) {
+      event.waitUntil(fromNetwork.catch(() => {}));
+      return cached;
+    }
+
+    try {
+      return await fromNetwork;
+    } catch {
+      // Offline én niet gecachet: bij een paginanavigatie de app-schil teruggeven,
+      // zodat de app opent i.p.v. een browserfout.
+      if (req.mode === 'navigate') {
+        return (await cache.match('index.html')) || (await cache.match('./')) || Response.error();
+      }
+      return Response.error();
+    }
+  })());
 });
