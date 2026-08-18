@@ -58,9 +58,28 @@ const Shopping = (() => {
   }
 
   function removeItem(id) {
+    const item = items.find((i) => i.id === id);
     items = items.filter((i) => i.id !== id);
     save();
     render();
+    // Via Picnic-snelzoeken gekoppelde items ook uit het echte mandje halen —
+    // behalve als het item al is afgevinkt (dan is het gewoon gekocht).
+    if (item?.picnicId && item.picnicCount > 0 && !item.done) {
+      Picnic.removeFromBasket(item.picnicId, item.picnicCount).catch((err) => {
+        alert(`Let op: "${item.name}" is van het lijstje gehaald, maar kon niet uit je `
+          + `Picnic-mandje verwijderd worden (${err.message || 'onbekende fout'}).`);
+      });
+    }
+  }
+
+  /** Koppelt een lijstitem aan een Picnic-product, incl. het aantal in het mandje. */
+  function setPicnicLink(id, productId, count) {
+    const item = items.find((i) => i.id === id);
+    if (item) {
+      item.picnicId = productId;
+      item.picnicCount = count;
+      save();
+    }
   }
 
   function clearDone() {
@@ -182,5 +201,5 @@ const Shopping = (() => {
     document.getElementById('btn-share-list').addEventListener('click', shareList);
   }
 
-  return { init, rerender: render, addItem, renameItem, removeItem };
+  return { init, rerender: render, addItem, renameItem, removeItem, setPicnicLink };
 })();

@@ -194,6 +194,12 @@ const Picnic = (() => {
     await request('POST', '/cart/remove_product', { product_id: productId, count }, true);
   }
 
+  /** Voor de boodschappenlijst: gekoppeld product uit het echte mandje halen. */
+  async function removeFromBasket(productId, count) {
+    if (!isConfigured() || !isLoggedIn()) throw new Error('niet ingelogd bij Picnic');
+    await removeFromCart(productId, count);
+  }
+
   // ---- UI: knop per boodschappenitem -------------------------------------------
 
   /** Picnic-zoekknop voor een open boodschappenitem (of null als niet ingesteld). */
@@ -381,14 +387,19 @@ const Picnic = (() => {
       if (!addToList) return;
       const label = inBasket > 1 ? `${inBasket}× ${unit.name}` : unit.name;
       if (inBasket === 0 && listItemId) {
+        // Teller staat weer op 0: het mandje is al bijgewerkt via de minknop,
+        // dus alleen de koppeling loskoppelen vóór het lijstitem weggaat.
+        Shopping.setPicnicLink(listItemId, null, 0);
         Shopping.removeItem(listItemId);
         listItemId = null;
       } else if (inBasket > 0 && !listItemId) {
         listItemId = Shopping.addItem(label);
+        Shopping.setPicnicLink(listItemId, unit.id, inBasket);
         // Het getypte zoekwoord is verwerkt: veld leegmaken.
         document.getElementById('shopping-input').value = '';
       } else if (listItemId) {
         Shopping.renameItem(listItemId, label);
+        Shopping.setPicnicLink(listItemId, unit.id, inBasket);
       }
     }
 
@@ -497,5 +508,5 @@ const Picnic = (() => {
     updateQuickButton();
   }
 
-  return { init, buttonFor, isConfigured, isLoggedIn, md5 };
+  return { init, buttonFor, isConfigured, isLoggedIn, removeFromBasket, md5 };
 })();
