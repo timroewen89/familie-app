@@ -127,7 +127,10 @@ const Shopping = (() => {
       del.setAttribute('aria-label', `${item.name} verwijderen`);
       del.addEventListener('click', () => removeItem(item.id));
 
-      li.append(checkbox, name, del);
+      li.append(checkbox, name);
+      const picnicBtn = Picnic.buttonFor(item);
+      if (picnicBtn) li.appendChild(picnicBtn);
+      li.appendChild(del);
       list.appendChild(li);
     }
 
@@ -155,5 +158,5 @@ const Shopping = (() => {
     document.getElementById('btn-share-list').addEventListener('click', shareList);
   }
 
-  return { init };
+  return { init, rerender: render };
 })();

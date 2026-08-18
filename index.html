@@ -96,6 +96,19 @@
         OAuth Client-ID
         <input type="text" id="input-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
       </label>
+
+      <h3>Picnic (optioneel)</h3>
+      <p class="hint">
+        Vul de URL van je eigen Picnic-proxy in (zie de README, sectie "Picnic koppelen").
+        Je logt daarna in met je eigen Picnic-account; het wachtwoord wordt nooit bewaard.
+      </p>
+      <label>
+        Proxy-URL
+        <input type="url" id="input-picnic-url" placeholder="https://picnic-proxy.jouwnaam.workers.dev">
+      </label>
+      <p class="hint" id="picnic-status"></p>
+      <button type="button" class="btn btn-ghost" id="btn-picnic-logout" hidden>Picnic-sessie wissen</button>
+
       <div class="dialog-buttons">
         <button type="submit" class="btn btn-primary" value="save">Opslaan</button>
         <button type="button" class="btn btn-ghost" id="btn-settings-cancel">Annuleren</button>
@@ -113,6 +126,54 @@
         <button type="button" class="btn btn-primary" id="btn-calendars-close">Klaar</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Picnic: inloggen -->
+  <dialog id="picnic-login-dialog">
+    <div id="picnic-step-login">
+      <form id="picnic-login-form">
+        <h2>Inloggen bij Picnic</h2>
+        <p class="hint">
+          Log in met je eigen Picnic-account. Je wachtwoord wordt direct en versleuteld
+          naar Picnic gestuurd en nergens opgeslagen; alleen het inlogtoken blijft in je browser.
+        </p>
+        <label>
+          E-mailadres
+          <input type="email" id="picnic-email" autocomplete="username" required>
+        </label>
+        <label>
+          Wachtwoord
+          <input type="password" id="picnic-password" autocomplete="current-password" required>
+        </label>
+        <div class="dialog-buttons">
+          <button type="button" class="btn btn-ghost" id="btn-picnic-login-cancel">Annuleren</button>
+          <button type="submit" class="btn btn-primary">Inloggen</button>
+        </div>
+      </form>
+    </div>
+    <div id="picnic-step-2fa" hidden>
+      <form id="picnic-2fa-form">
+        <h2>Verificatiecode</h2>
+        <p class="hint">Picnic heeft een code naar je telefoon gestuurd (SMS). Vul hem hieronder in.</p>
+        <label>
+          Code
+          <input type="text" id="picnic-2fa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10">
+        </label>
+        <div class="dialog-buttons">
+          <button type="submit" class="btn btn-primary">Bevestigen</button>
+        </div>
+      </form>
+    </div>
+    <p id="picnic-login-error" class="status error" hidden></p>
+  </dialog>
+
+  <!-- Picnic: product zoeken en aan het mandje toevoegen -->
+  <dialog id="picnic-search-dialog">
+    <h2 id="picnic-search-title">Picnic</h2>
+    <div id="picnic-results" class="picnic-results"></div>
+    <div class="dialog-buttons">
+      <button type="button" class="btn btn-primary" id="btn-picnic-search-close">Klaar</button>
+    </div>
   </dialog>
 
   <!-- Nieuwe afspraak toevoegen -->
@@ -160,6 +221,7 @@
     </form>
   </dialog>
 
+  <script src="js/picnic.js"></script>
   <script src="js/shopping.js"></script>
   <script src="js/tags.js"></script>
   <script src="js/calendar.js"></script>
