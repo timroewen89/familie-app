@@ -619,7 +619,8 @@ main {
   color: var(--text-muted);
 }
 
-.shopping-list .btn-delete {
+.shopping-list .btn-delete,
+.shopping-list .btn-fav {
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -628,6 +629,96 @@ main {
   min-width: 44px;
   min-height: 44px;
   border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Ster: leeg = alleen omtrek, actief = gevuld geel */
+.shopping-list .btn-fav.active {
+  color: var(--g-yellow);
+}
+
+.shopping-list .btn-fav.active .icon {
+  fill: currentColor;
+}
+
+.shopping-list .btn-fav:hover {
+  color: var(--g-yellow);
+}
+
+/* Favorietenbalk: horizontaal scrollbaar rijtje snelknoppen */
+.favorites-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.favorites-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  padding-right: 0.15rem;
+}
+
+.favorite-chip {
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-bg);
+}
+
+.favorite-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-height: 40px;
+  padding: 0.3rem 0.5rem 0.3rem 0.7rem;
+  border: none;
+  background: transparent;
+  color: var(--g-blue-dark);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.favorite-add .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.favorite-add:hover {
+  background: var(--today-bg);
+}
+
+.favorite-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.favorite-remove .icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.favorite-remove:hover {
+  color: var(--g-red);
+  background: var(--red-bg);
 }
 
 .shopping-list .btn-delete:hover {
