@@ -53,6 +53,23 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // Productafbeeldingen (alleen GET, vast patroon) — voor de thumbnails
+    // in de zoekresultaten van de app.
+    const imageMatch = url.pathname.match(
+      /^\/static\/images\/[A-Za-z0-9_-]+\/(tiny|small|medium|large|extra-large)\.png$/
+    );
+    if (request.method === 'GET' && imageMatch) {
+      const upstream = await fetch(PICNIC_BASE + url.pathname, {
+        headers: { 'User-Agent': 'okhttp/4.9.0' },
+        cf: { cacheEverything: true, cacheTtl: 86400 },
+      });
+      const imageHeaders = new Headers(corsHeaders);
+      imageHeaders.set('Content-Type', upstream.headers.get('Content-Type') || 'image/png');
+      imageHeaders.set('Cache-Control', 'public, max-age=86400');
+      return new Response(upstream.body, { status: upstream.status, headers: imageHeaders });
+    }
+
     const match = url.pathname.match(/^\/api\/\d+(\/.*)$/);
     const apiPath = match ? match[1].split('?')[0] : null;
     if (!apiPath || !ALLOWED_PATHS.some((p) => apiPath === p)) {
