@@ -111,7 +111,10 @@ const Picnic = (() => {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    if (response.status === 401 || response.status === 403) {
+    // Inloggen/2FA horen NIET als 'sessie verlopen' behandeld te worden: daar
+    // betekent een 401/403 juist onjuiste gegevens of een verkeerde code.
+    const isAuthFlow = path.startsWith('/user/login') || path.startsWith('/user/2fa');
+    if (!isAuthFlow && (response.status === 401 || response.status === 403)) {
       config.authKey = null;
       save();
       const err = new Error('je Picnic-sessie is verlopen — log opnieuw in');
@@ -379,6 +382,7 @@ const Picnic = (() => {
     const actions = document.createElement('div');
     actions.className = 'picnic-actions';
     let inBasket = 0;
+    let busy = false; // blokkeert ook toetsenbord-activatie tijdens een lopende call
     const maxCount = Number(unit.max_count) > 0 ? Number(unit.max_count) : 99;
     // Gekoppeld lijstje-item (alleen bij zoeken vanuit het invoerveld).
     const addToList = linkToList;
@@ -405,6 +409,11 @@ const Picnic = (() => {
     }
 
     async function mutate(delta) {
+      if (busy) return;
+      // Grenzen bewaken: nooit onder 0 of boven het maximum.
+      if (delta < 0 && inBasket <= 0) return;
+      if (delta > 0 && inBasket >= maxCount) return;
+      busy = true;
       actions.classList.add('busy');
       try {
         if (delta > 0) await addToCart(unit.id, 1);
@@ -413,9 +422,11 @@ const Picnic = (() => {
         syncListItem();
       } catch (err) {
         alert(`Mandje bijwerken mislukt: ${err.message || 'onbekende fout'}`);
+      } finally {
+        busy = false;
+        actions.classList.remove('busy');
+        render();
       }
-      actions.classList.remove('busy');
-      render();
     }
 
     function stepButton(kind, label, delta, disabled) {

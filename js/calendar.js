@@ -31,6 +31,8 @@ const Cal = (() => {
 
   /** Events van de huidige week, gegroepeerd per dagsleutel 'YYYY-MM-DD'. */
   let eventsByDay = {};
+  /** Loopt op bij elke refresh(); een trage oude aanvraag herkent zo dat hij verouderd is. */
+  let refreshGen = 0;
 
   // ---- Configuratie -------------------------------------------------------
 
@@ -235,6 +237,7 @@ const Cal = (() => {
    */
   async function refresh() {
     if (!connected) return;
+    const gen = ++refreshGen;
     const { start, end } = App.getWeekRange();
     try {
       setStatus('Agenda laden…');
@@ -242,6 +245,9 @@ const Cal = (() => {
 
       const ids = activeCalendarIds();
       const results = await Promise.allSettled(ids.map((id) => fetchEvents(id, start, end)));
+
+      // Ondertussen naar een andere week gebladerd? Dan is dit antwoord verouderd.
+      if (gen !== refreshGen) return;
 
       if (results.some((r) => r.status === 'rejected' && r.reason?.auth)) {
         // Token verlopen of ingetrokken: opnieuw verbinden nodig.
@@ -327,8 +333,11 @@ const Cal = (() => {
     el.hidden = !message;
   }
 
+  let creatingEvent = false;
+
   async function submitEvent(e) {
     e.preventDefault();
+    if (creatingEvent) return; // dubbele tik/Enter tijdens het versturen negeren
     const title = document.getElementById('event-title').value.trim();
     const calendarId = document.getElementById('event-calendar').value;
     const dateStr = document.getElementById('event-date').value;
@@ -350,7 +359,10 @@ const Cal = (() => {
       body.end = { dateTime: end.toISOString() };
     }
 
+    const submitBtn = document.querySelector('#event-form button[type=submit]');
     try {
+      creatingEvent = true;
+      if (submitBtn) submitBtn.disabled = true;
       setEventError('');
       await ensureToken();
       const created = await authorizedFetch(
@@ -373,6 +385,9 @@ const Cal = (() => {
       } else {
         setEventError(`Toevoegen mislukt: ${err.message || 'onbekende fout'}`);
       }
+    } finally {
+      creatingEvent = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
   }
 
