@@ -196,6 +196,21 @@ const Picnic = (() => {
     }
   }
 
+  /** Zoekt direct op de tekst in het invoerveld, zonder het item eerst aan de lijst toe te voegen. */
+  function quickSearch() {
+    const input = document.getElementById('shopping-input');
+    const text = input.value.trim();
+    if (!text) {
+      input.focus();
+      return;
+    }
+    startSearch(text);
+  }
+
+  function updateQuickButton() {
+    document.getElementById('btn-picnic-quick').hidden = !isConfigured();
+  }
+
   // ---- UI: inlog-dialog ----------------------------------------------------------
 
   function openLoginDialog() {
@@ -357,6 +372,7 @@ const Picnic = (() => {
         save();
       }
       updateSettingsStatus();
+      updateQuickButton();
       Shopping.rerender();
     });
     document.getElementById('btn-settings').addEventListener('click', () => {
@@ -376,8 +392,10 @@ const Picnic = (() => {
     document.getElementById('btn-picnic-search-close').addEventListener('click', () => {
       document.getElementById('picnic-search-dialog').close();
     });
+    document.getElementById('btn-picnic-quick').addEventListener('click', quickSearch);
 
     updateSettingsStatus();
+    updateQuickButton();
   }
 
   return { init, buttonFor, isConfigured, isLoggedIn, md5 };
