@@ -211,7 +211,11 @@ const App = (() => {
     render();
   }
 
-  return { init, render, getWeekRange, dateKey, parseDateKey };
+  function getCurrentDate() {
+    return new Date(currentDate);
+  }
+
+  return { init, render, getWeekRange, getCurrentDate, dateKey, parseDateKey };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -564,6 +564,55 @@ dialog input:focus {
   outline-offset: 1px;
 }
 
+dialog select {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+
+/* Nieuwe-afspraak-formulier */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.check-row input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--g-blue-dark);
+}
+
+.time-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* display:flex zou het hidden-attribuut anders overschrijven */
+.time-row[hidden] {
+  display: none;
+}
+
+.time-row label {
+  flex: 1;
+}
+
+.field-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0 0 0.4rem;
+}
+
 .dialog-buttons {
   display: flex;
   justify-content: flex-end;

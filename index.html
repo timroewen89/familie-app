@@ -37,6 +37,7 @@
           <button id="btn-view-day" class="btn toggle">Dag</button>
           <button id="btn-view-week" class="btn toggle">Week</button>
         </div>
+        <button id="btn-add-event" class="btn btn-primary" hidden>＋ Afspraak</button>
         <button id="btn-today" class="btn">Vandaag</button>
       </div>
 
@@ -109,6 +110,39 @@
       <div id="calendars-options" class="tags-options"></div>
       <div class="dialog-buttons">
         <button type="button" class="btn btn-primary" id="btn-calendars-close">Klaar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Nieuwe afspraak toevoegen -->
+  <dialog id="event-dialog">
+    <form id="event-form">
+      <h2>Nieuwe afspraak</h2>
+      <label>
+        Titel
+        <input type="text" id="event-title" maxlength="200" placeholder="Bijv. Zwemles Mick" required>
+      </label>
+      <label>
+        Agenda
+        <select id="event-calendar"></select>
+      </label>
+      <label>
+        Datum
+        <input type="date" id="event-date" required>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="event-allday"> Hele dag
+      </label>
+      <div class="time-row" id="event-times">
+        <label>Van <input type="time" id="event-start"></label>
+        <label>Tot <input type="time" id="event-end"></label>
+      </div>
+      <p class="field-label">Personen (optioneel)</p>
+      <div id="event-tags" class="tags-options"></div>
+      <p id="event-error" class="status error" hidden></p>
+      <div class="dialog-buttons">
+        <button type="button" class="btn btn-ghost" id="btn-event-cancel">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Toevoegen</button>
       </div>
     </form>
   </dialog>
