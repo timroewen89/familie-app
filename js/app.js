@@ -80,12 +80,12 @@ const App = (() => {
     const el = document.createElement('div');
     el.className = 'event';
     if (event.allDay) el.classList.add('all-day');
-    if (event.time) {
-      const time = document.createElement('span');
-      time.className = 'event-time';
-      time.textContent = event.time;
-      el.appendChild(time);
-    }
+    // Kleur van de agenda waar de afspraak uit komt (uit Google Calendar).
+    if (event.color) el.style.borderLeftColor = event.color;
+    const time = document.createElement('span');
+    time.className = 'event-time';
+    time.textContent = event.allDay ? 'hele dag' : event.time;
+    el.appendChild(time);
     el.appendChild(document.createTextNode(event.title));
 
     const chips = Tags.chipsFor(event.id);
@@ -117,8 +117,9 @@ const App = (() => {
     column.appendChild(header);
 
     const events = Cal.getEventsForDay(key).filter((e) => Tags.passesFilter(e.id));
-    // Hele-dag-events bovenaan.
-    events.sort((a, b) => (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0));
+    // Hele-dag-events bovenaan, daarna op tijd (relevant bij meerdere agenda's).
+    events.sort((a, b) =>
+      ((b.allDay ? 1 : 0) - (a.allDay ? 1 : 0)) || (a.time || '').localeCompare(b.time || ''));
 
     if (events.length === 0) {
       const empty = document.createElement('div');
