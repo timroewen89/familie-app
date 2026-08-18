@@ -19,6 +19,8 @@ const Cal = (() => {
   let accessToken = null;
   let tokenExpiresAt = 0;
   let connected = false;
+  /** Lopende inlogaanvraag: {resolve, reject} van de requestToken-promise. */
+  let pendingAuth = null;
 
   /** Beschikbare agenda's van het account: {id, name, color, primary, visible}. */
   let calendars = [];
@@ -99,23 +101,52 @@ const Cal = (() => {
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: config.clientId,
         scope: SCOPE,
-        callback: () => {}, // wordt per aanvraag gezet
+        callback: (response) => {
+          const pending = pendingAuth;
+          pendingAuth = null;
+          if (!pending) return;
+          if (response.error) {
+            pending.reject(new Error(describeAuthError(response.error)));
+          } else {
+            accessToken = response.access_token;
+            // Marge van een minuut zodat we nooit met een net-verlopen token werken.
+            tokenExpiresAt = Date.now() + (Number(response.expires_in) - 60) * 1000;
+            pending.resolve();
+          }
+        },
+        // Zonder error_callback gooit GIS bij een geblokkeerde popup een kaal
+        // object zonder .message — dat toonde "undefined" in de statusbalk.
+        error_callback: (err) => {
+          const pending = pendingAuth;
+          pendingAuth = null;
+          if (pending) pending.reject(new Error(describeAuthError(err?.type)));
+        },
       });
+    }
+  }
+
+  /** Vertaalt GIS-foutcodes naar een begrijpelijke Nederlandse melding. */
+  function describeAuthError(code) {
+    switch (code) {
+      case 'popup_failed_to_open':
+        return 'de browser blokkeerde het inlogvenster — sta pop-ups toe voor deze site en probeer opnieuw';
+      case 'popup_closed':
+      case 'user_cancel':
+        return 'het inlogvenster werd gesloten voordat je inlogde';
+      case 'access_denied':
+        return 'toegang geweigerd — staat dit Google-account als test user in de Google Cloud Console?';
+      case 'invalid_client':
+        return 'de Client-ID lijkt ongeldig — controleer hem via ⚙️';
+      default:
+        return code
+          ? `${code} — controleer je Client-ID en of jouw site-adres bij de Authorized JavaScript origins staat (nieuwe origins kunnen even duren voordat ze actief zijn)`
+          : 'onbekende fout';
     }
   }
 
   function requestToken() {
     return new Promise((resolve, reject) => {
-      tokenClient.callback = (response) => {
-        if (response.error) {
-          reject(new Error(response.error));
-        } else {
-          accessToken = response.access_token;
-          // Marge van een minuut zodat we nooit met een net-verlopen token werken.
-          tokenExpiresAt = Date.now() + (Number(response.expires_in) - 60) * 1000;
-          resolve();
-        }
-      };
+      pendingAuth = { resolve, reject };
       // Leeg prompt: Google toont het toestemmingsscherm alleen wanneer dat
       // nodig is en geeft anders stil een nieuw token uit.
       tokenClient.requestAccessToken({ prompt: '' });
@@ -146,7 +177,7 @@ const Cal = (() => {
     } catch (err) {
       connected = false;
       updateConnectButton();
-      setStatus(`Verbinden mislukt: ${err.message}. Controleer je Client-ID.`, true);
+      setStatus(`Verbinden mislukt: ${err?.message || 'onbekende fout'}.`, true);
     }
   }
 
@@ -346,11 +377,16 @@ const Cal = (() => {
         accessToken = null;
         connected = false;
         updateConnectButton();
+        if (hasConfig()) ensureTokenClient().catch(() => {});
       }
     });
     document.getElementById('btn-settings-cancel').addEventListener('click', () => dialog.close());
 
-    if (!hasConfig()) {
+    if (hasConfig()) {
+      // GIS alvast laden: iOS Safari blokkeert de inlogpopup als die te lang
+      // na de tik opent, dus het script moet klaarstaan vóór de klik.
+      ensureTokenClient().catch(() => {});
+    } else {
       setStatus('Nog niet gekoppeld aan Google Calendar. Klik op ⚙️ om je Client-ID in te stellen.');
     }
   }
