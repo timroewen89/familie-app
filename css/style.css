@@ -345,9 +345,10 @@ main {
   font-weight: 500;
 }
 
-.event.all-day {
-  border-left-color: var(--g-green);
-  background: #e6f4ea; /* Google green 50 */
+/* Hele-dag-events: neutraal tijdslabel; de agendakleur zit in de linkerrand */
+.event.all-day .event-time {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .day-empty {
@@ -400,6 +401,14 @@ main {
   height: 1.25rem;
   accent-color: currentColor;
   cursor: pointer;
+}
+
+/* Kleurstip van een agenda in de agenda-kiezer */
+.cal-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* Boodschappenlijst */

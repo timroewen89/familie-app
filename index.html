@@ -27,6 +27,7 @@
         <h2>📅 Agenda</h2>
         <div class="calendar-actions">
           <button id="btn-connect" class="btn btn-primary">Verbind met Google</button>
+          <button id="btn-calendars" class="btn btn-ghost" title="Agenda's kiezen" aria-label="Agenda's kiezen" hidden>📆</button>
           <button id="btn-settings" class="btn btn-ghost" title="Instellingen" aria-label="Instellingen">⚙️</button>
         </div>
       </div>
@@ -96,6 +97,18 @@
       <div class="dialog-buttons">
         <button type="submit" class="btn btn-primary" value="save">Opslaan</button>
         <button type="button" class="btn btn-ghost" id="btn-settings-cancel">Annuleren</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Agenda's kiezen -->
+  <dialog id="calendars-dialog">
+    <form method="dialog">
+      <h2>Agenda's</h2>
+      <p class="hint">Kies welke agenda's uit je Google-account in het overzicht meedoen.</p>
+      <div id="calendars-options" class="tags-options"></div>
+      <div class="dialog-buttons">
+        <button type="button" class="btn btn-primary" id="btn-calendars-close">Klaar</button>
       </div>
     </form>
   </dialog>
