@@ -10,6 +10,7 @@ Een lichtgewicht familie-webapp met een **weekoverzicht** gekoppeld aan Google C
 - 📆 **Meerdere agenda's**: kies via de 📆-knop welke agenda's uit je account meedoen (bijv. je eigen agenda, een gedeelde gezinsagenda en verjaardagen). Elke afspraak krijgt de kleur van zijn agenda uit Google Calendar. Standaard doen de agenda's mee die je in Google Calendar zichtbaar hebt staan.
 - 🏷️ **Persoonstags**: tik op een afspraak om gezinsleden (standaard Tim, Renate, Mick en Davi — aanpasbaar via ⚙️) te taggen, elk met een eigen kleur. Filter de agenda per persoon via de chips boven het overzicht. Tags worden lokaal bewaard (Google Calendar blijft alleen-lezen).
 - 🛒 **Boodschappenlijst**: items toevoegen, afvinken en verwijderen — persistent in je browser, werkt ook offline en zonder Google-login.
+- ⭐ **Favorieten**: markeer vaste boodschappen met de ster; via de favorietenbalk zet je ze in elke week met één tik terug op de lijst (en, als het een Picnic-product is en je bent ingelogd, meteen in je Picnic-mandje).
 - 📱 **Mobiel & installeerbaar (PWA)**: voeg de app toe aan je beginscherm (Android: menu → *App installeren*; iOS: deelknop → *Zet op beginscherm*). Dankzij een service worker start de app snel en werkt de boodschappenlijst ook offline.
 - 🎨 Kleurstelling gebaseerd op het Google Material-palet (blauw, rood, geel, groen).
 

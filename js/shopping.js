@@ -4,9 +4,12 @@
  */
 const Shopping = (() => {
   const STORAGE_KEY = 'familie-app.shopping';
+  const FAVORITES_KEY = 'familie-app.favorites';
 
   /** @type {{id: string, name: string, done: boolean}[]} */
   let items = [];
+  /** Favorieten: vaste boodschappen die je snel opnieuw toevoegt. @type {{name: string, picnicId: string|null}[]} */
+  let favorites = [];
 
   function load() {
     try {
@@ -16,10 +19,21 @@ const Shopping = (() => {
     } catch {
       items = [];
     }
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      favorites = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(favorites)) favorites = [];
+    } catch {
+      favorites = [];
+    }
   }
 
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }
+
+  function saveFavorites() {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
   }
 
   /** Voegt een item toe en geeft het id terug (o.a. voor de Picnic-koppeling). */
@@ -72,13 +86,111 @@ const Shopping = (() => {
     }
   }
 
-  /** Koppelt een lijstitem aan een Picnic-product, incl. het aantal in het mandje. */
-  function setPicnicLink(id, productId, count) {
+  /** Koppelt een lijstitem aan een Picnic-product, incl. het aantal en de productnaam. */
+  function setPicnicLink(id, productId, count, productName) {
     const item = items.find((i) => i.id === id);
     if (item) {
       item.picnicId = productId;
       item.picnicCount = count;
+      if (productName) item.picnicName = productName;
+      else if (!productId) delete item.picnicName;
       save();
+    }
+  }
+
+  // ---- Favorieten -----------------------------------------------------------
+
+  /** Naam zonder eventueel "N× "-voorvoegsel (dat hoort bij het mandje-aantal). */
+  function baseName(name) {
+    return name.replace(/^\d+×\s*/, '');
+  }
+
+  /** Sleutel om favorieten/items te vergelijken: op Picnic-product als dat er is, anders op naam. */
+  function favKey(entry) {
+    return entry.picnicId ? `p:${entry.picnicId}` : `n:${entry.name.trim().toLowerCase()}`;
+  }
+
+  /** De favoriet-vorm van een lijstitem (schone productnaam + eventueel Picnic-id). */
+  function favEntryOf(item) {
+    return { name: item.picnicName || baseName(item.name), picnicId: item.picnicId || null };
+  }
+
+  function isFavorite(item) {
+    const key = favKey(favEntryOf(item));
+    return favorites.some((f) => favKey(f) === key);
+  }
+
+  function toggleFavorite(item) {
+    const entry = favEntryOf(item);
+    const key = favKey(entry);
+    const idx = favorites.findIndex((f) => favKey(f) === key);
+    if (idx >= 0) favorites.splice(idx, 1);
+    else favorites.push(entry);
+    saveFavorites();
+    render();
+  }
+
+  function removeFavorite(fav) {
+    const key = favKey(fav);
+    favorites = favorites.filter((f) => favKey(f) !== key);
+    saveFavorites();
+    render();
+  }
+
+  /**
+   * Voegt een favoriet toe aan de lijst; als het een Picnic-product is en je
+   * bent ingelogd, gaat het er ook meteen (1×) in je Picnic-mandje bij.
+   */
+  async function addFavoriteToList(fav) {
+    const id = addItem(fav.name);
+    if (id && fav.picnicId && Picnic.isConfigured() && Picnic.isLoggedIn()) {
+      try {
+        await Picnic.addToBasket(fav.picnicId, 1);
+        setPicnicLink(id, fav.picnicId, 1, fav.name);
+        App.toast(`"${fav.name}" op de lijst en in je Picnic-mandje.`);
+      } catch (err) {
+        App.toast(`"${fav.name}" op de lijst, maar niet in je mandje (${App.friendlyError(err)}).`);
+      }
+    }
+  }
+
+  function renderFavorites() {
+    const bar = document.getElementById('favorites-bar');
+    bar.textContent = '';
+    if (favorites.length === 0) {
+      bar.hidden = true;
+      return;
+    }
+    bar.hidden = false;
+
+    const label = document.createElement('span');
+    label.className = 'favorites-label';
+    label.textContent = 'Favorieten';
+    bar.appendChild(label);
+
+    for (const fav of favorites) {
+      const chip = document.createElement('div');
+      chip.className = 'favorite-chip';
+
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'favorite-add';
+      add.innerHTML = Icons.html('plus');
+      const text = document.createElement('span');
+      text.textContent = fav.name; // textContent voorkomt HTML-injectie via productnaam
+      add.appendChild(text);
+      add.setAttribute('aria-label', `${fav.name} toevoegen aan de lijst`);
+      add.addEventListener('click', () => addFavoriteToList(fav));
+
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'favorite-remove';
+      rm.innerHTML = Icons.html('x');
+      rm.setAttribute('aria-label', `${fav.name} uit favorieten verwijderen`);
+      rm.addEventListener('click', () => removeFavorite(fav));
+
+      chip.append(add, rm);
+      bar.appendChild(chip);
     }
   }
 
@@ -139,6 +251,7 @@ const Shopping = (() => {
     list.textContent = '';
     updateShareButton();
     updateBadge();
+    renderFavorites();
 
     if (items.length === 0) {
       const empty = document.createElement('li');
@@ -163,6 +276,17 @@ const Shopping = (() => {
       name.className = 'item-name';
       name.textContent = item.name;
 
+      const favBtn = document.createElement('button');
+      favBtn.type = 'button';
+      favBtn.className = 'btn-fav';
+      const favActive = isFavorite(item);
+      favBtn.classList.toggle('active', favActive);
+      favBtn.innerHTML = Icons.html('star');
+      favBtn.setAttribute('aria-pressed', favActive ? 'true' : 'false');
+      favBtn.setAttribute('aria-label', `${item.name} als favoriet`);
+      favBtn.title = favActive ? 'Uit favorieten' : 'Bewaar als favoriet';
+      favBtn.addEventListener('click', () => toggleFavorite(item));
+
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'btn-delete';
@@ -173,7 +297,7 @@ const Shopping = (() => {
       li.append(checkbox, name);
       const picnicBtn = Picnic.buttonFor(item);
       if (picnicBtn) li.appendChild(picnicBtn);
-      li.appendChild(del);
+      li.append(favBtn, del);
       list.appendChild(li);
     }
 

@@ -204,6 +204,12 @@ const Picnic = (() => {
     await removeFromCart(productId, count);
   }
 
+  /** Voor favorieten: een product rechtstreeks in het echte mandje leggen. */
+  async function addToBasket(productId, count = 1) {
+    if (!isConfigured() || !isLoggedIn()) throw new Error('niet ingelogd bij Picnic');
+    await addToCart(productId, count);
+  }
+
   // ---- UI: knop per boodschappenitem -------------------------------------------
 
   /** Picnic-zoekknop voor een open boodschappenitem (of null als niet ingesteld). */
@@ -403,12 +409,12 @@ const Picnic = (() => {
         listItemId = null;
       } else if (inBasket > 0 && !listItemId) {
         listItemId = Shopping.addItem(label);
-        Shopping.setPicnicLink(listItemId, unit.id, inBasket);
+        Shopping.setPicnicLink(listItemId, unit.id, inBasket, unit.name);
         // Het getypte zoekwoord is verwerkt: veld leegmaken.
         document.getElementById('shopping-input').value = '';
       } else if (listItemId) {
         Shopping.renameItem(listItemId, label);
-        Shopping.setPicnicLink(listItemId, unit.id, inBasket);
+        Shopping.setPicnicLink(listItemId, unit.id, inBasket, unit.name);
       }
     }
 
@@ -528,5 +534,5 @@ const Picnic = (() => {
     updateQuickButton();
   }
 
-  return { init, buttonFor, isConfigured, isLoggedIn, removeFromBasket, md5 };
+  return { init, buttonFor, isConfigured, isLoggedIn, removeFromBasket, addToBasket, md5 };
 })();
