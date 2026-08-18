@@ -493,6 +493,62 @@ main {
   padding: 0.5rem 0.25rem;
 }
 
+/* Picnic-zoekknop per item (Picnic-rood) */
+.picnic-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: #e1171e;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.picnic-btn:hover {
+  background: #b81218;
+}
+
+/* Picnic-zoekresultaten */
+.picnic-results {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.picnic-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.picnic-result-info {
+  min-width: 0;
+}
+
+.picnic-result-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.picnic-add {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.picnic-add.picnic-added {
+  background: var(--g-green);
+  border-color: var(--g-green);
+}
+
 .counter {
   color: var(--g-green);
   font-weight: 500;
@@ -501,7 +557,14 @@ main {
 
 .shopping-footer {
   margin-top: 0.5rem;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+#btn-share-list:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Instellingen-dialog */

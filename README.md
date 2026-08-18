@@ -62,9 +62,33 @@ Voeg op de pagina *Google Auth Platform → Data Access* deze twee scopes toe (b
 
 Had je al verbonden vóór het toevoegen van de events-scope, dan vraagt de app je eenmalig opnieuw te verbinden zodra je een afspraak wilt toevoegen.
 
+## Picnic koppelen (optioneel)
+
+Met de Picnic-koppeling zoek je een boodschappenitem rechtstreeks op in Picnic en leg je het met één tik in je échte Picnic-mandje (rode **P**-knop naast elk open item).
+
+**Belangrijk om te weten:** Picnic heeft geen officiële API; deze koppeling gebruikt de endpoints van hun eigen app (zoals ook de Home Assistant-community doet) en kan dus breken als Picnic iets wijzigt. De 📤 deel-knop blijft in dat geval gewoon werken.
+
+### Stap 1: proxy deployen (eenmalig, gratis)
+
+Browsers mogen de Picnic-API niet rechtstreeks aanroepen; daarom draait er een piepklein doorgeefluik als [Cloudflare Worker](https://workers.cloudflare.com/) (gratis, ruim voldoende voor een gezin):
+
+1. Maak een gratis account op [dash.cloudflare.com](https://dash.cloudflare.com/).
+2. Ga naar **Workers & Pages → Create → Create Worker**, geef hem een naam (bijv. `picnic-proxy`) en klik **Deploy**.
+3. Klik **Edit code**, vervang de inhoud door [`worker/picnic-proxy.js`](worker/picnic-proxy.js) uit deze repo en pas bovenin `ALLOWED_ORIGINS` aan naar jouw eigen app-URL('s).
+4. Klik **Deploy** en kopieer de Worker-URL (bijv. `https://picnic-proxy.jouwnaam.workers.dev`).
+
+De Worker slaat niets op en logt niets; hij geeft verzoeken alleen door en voegt de headers toe die Picnic verwacht. Door `ALLOWED_ORIGINS` kan alleen jouw eigen app hem gebruiken.
+
+### Stap 2: in de app
+
+1. Open **⚙️ → Picnic** en plak de Worker-URL.
+2. Tik op de rode **P** naast een boodschappenitem → log eenmalig in met je Picnic-account (SMS-code wordt ondersteund). Je wachtwoord wordt nooit opgeslagen; alleen het inlogtoken blijft lokaal in je browser (~30 dagen geldig, daarna log je gewoon opnieuw in).
+3. Kies een product uit de zoekresultaten en tik **＋ Mandje** — het staat direct in je Picnic-winkelmand.
+
 ## Privacy & veiligheid
 
 - De agenda wordt benaderd met de scopes `calendar.readonly` (lezen) en `calendar.events` (afsprakenbeheer — de app gebruikt dit alleen om afspraken **aan te maken**; verwijderen of bewerken zit niet in de app). Agenda-instellingen of delen wijzigen kan met deze scopes sowieso niet.
 - Er is **geen API-key**: de Calendar API wordt aangeroepen met alleen het kortlevende OAuth-token, dat uitsluitend in het geheugen van de pagina leeft.
 - Client-ID, boodschappenlijst en persoonstags blijven in `localStorage` van je eigen browser; er is geen backend en er worden geen gegevens naar derden gestuurd.
+- De optionele Picnic-koppeling gebruikt jouw eigen proxy (die niets opslaat of logt); je Picnic-wachtwoord wordt alleen tijdens het inloggen versleuteld doorgestuurd en nooit bewaard — alleen het inlogtoken staat lokaal in je browser.
 - De Client-ID is per ontwerp publiek en alleen bruikbaar vanaf de origins die jij in de Google Cloud Console toestaat.

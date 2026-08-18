@@ -55,10 +55,47 @@ const Shopping = (() => {
     render();
   }
 
+  /** De nog niet gekochte items als tekst, bijv. om in Picnic te gebruiken. */
+  function openItemsText() {
+    return items.filter((i) => !i.done).map((i) => `• ${i.name}`).join('\n');
+  }
+
+  /**
+   * Deelt de open boodschappen via het deelmenu van het toestel (op iOS/Android
+   * kies je daar bijv. Picnic of een berichtje naar elkaar); zonder deelmenu
+   * wordt de lijst naar het klembord gekopieerd.
+   */
+  async function shareList() {
+    const text = openItemsText();
+    if (!text) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Boodschappenlijst', text });
+        return;
+      } catch {
+        return; // delen geannuleerd door de gebruiker
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      flashShareButton('Gekopieerd ✓');
+    } catch {
+      flashShareButton('Kopiëren mislukt');
+    }
+  }
+
+  function flashShareButton(message) {
+    const btn = document.getElementById('btn-share-list');
+    const original = btn.textContent;
+    btn.textContent = message;
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  }
+
   function render() {
     const list = document.getElementById('shopping-list');
     const counter = document.getElementById('shopping-counter');
     list.textContent = '';
+    updateShareButton();
 
     if (items.length === 0) {
       const empty = document.createElement('li');
@@ -90,12 +127,19 @@ const Shopping = (() => {
       del.setAttribute('aria-label', `${item.name} verwijderen`);
       del.addEventListener('click', () => removeItem(item.id));
 
-      li.append(checkbox, name, del);
+      li.append(checkbox, name);
+      const picnicBtn = Picnic.buttonFor(item);
+      if (picnicBtn) li.appendChild(picnicBtn);
+      li.appendChild(del);
       list.appendChild(li);
     }
 
     const doneCount = items.filter((i) => i.done).length;
     counter.textContent = `${doneCount} van ${items.length} gedaan`;
+  }
+
+  function updateShareButton() {
+    document.getElementById('btn-share-list').disabled = items.every((i) => i.done);
   }
 
   function init() {
@@ -111,7 +155,8 @@ const Shopping = (() => {
     });
 
     document.getElementById('btn-clear-done').addEventListener('click', clearDone);
+    document.getElementById('btn-share-list').addEventListener('click', shareList);
   }
 
-  return { init };
+  return { init, rerender: render };
 })();

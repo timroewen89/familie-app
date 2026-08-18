@@ -219,6 +219,7 @@ const App = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
+  Picnic.init();
   Shopping.init();
   Tags.init();
   Cal.init();
