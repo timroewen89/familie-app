@@ -1,0 +1,22 @@
+# Draait de volledige testsuite (unit + browser) bij elke push en PR.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      # Zelfde versie als devDependency playwright-core, zodat de browser past.
+      - run: npx playwright@1.62.1 install --with-deps chromium
+      - run: npm test
+        env:
+          REQUIRE_BROWSER: '1'

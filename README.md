@@ -25,6 +25,16 @@ python3 -m http.server 8000
 
 Open daarna <http://localhost:8000>.
 
+## Tests
+
+De repo bevat een volledige testsuite (unit-tests voor de Worker, service worker en MD5, plus ±20 headless-browsertests voor alle app-flows). Ze draaien ook automatisch in GitHub Actions bij elke push en PR.
+
+```bash
+npm install
+npx playwright@1.62.1 install chromium   # eenmalig, downloadt de testbrowser
+npm test                                  # alles; of: npm run test:unit / test:browser
+```
+
 ## Google Calendar koppelen
 
 De app bevat bewust **geen** geheimen en gebruikt **geen API-key** — de agenda wordt rechtstreeks met het OAuth-token opgehaald. Het enige dat je nodig hebt is een OAuth Client-ID (een publiek gegeven, beschermd via de toegestane origins). Die maak je eenmalig aan en voer je in via het ⚙️-paneel; hij wordt alleen lokaal in je browser bewaard.
