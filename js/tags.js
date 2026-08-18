@@ -137,6 +137,38 @@ const Tags = (() => {
     document.getElementById('tags-dialog').showModal();
   }
 
+  /** Tags direct zetten (bijv. bij het aanmaken van een nieuwe afspraak). */
+  function setTags(eventId, names) {
+    const valid = names.filter((name) => members.includes(name));
+    if (valid.length > 0) tags[eventId] = valid;
+    else delete tags[eventId];
+    save();
+  }
+
+  /** Checklist met gezinsleden renderen (voor de nieuwe-afspraak-dialog). */
+  function renderMemberChecklist(container, preChecked = []) {
+    container.textContent = '';
+    for (const name of members) {
+      const color = colorFor(name);
+      const label = document.createElement('label');
+      label.className = 'tag-option';
+      label.style.setProperty('--tag-bg', color.bg);
+      label.style.setProperty('--tag-fg', color.fg);
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.name = name;
+      checkbox.checked = preChecked.includes(name);
+
+      label.append(checkbox, document.createTextNode(name));
+      container.appendChild(label);
+    }
+  }
+
+  function readMemberChecklist(container) {
+    return [...container.querySelectorAll('input:checked')].map((input) => input.dataset.name);
+  }
+
   // ---- Filterbalk ---------------------------------------------------------------
 
   function renderFilterBar() {
@@ -186,5 +218,8 @@ const Tags = (() => {
     });
   }
 
-  return { init, getMembers, getTags, passesFilter, chipsFor, openDialog, renderFilterBar };
+  return {
+    init, getMembers, getTags, setTags, passesFilter, chipsFor, openDialog,
+    renderFilterBar, renderMemberChecklist, readMemberChecklist,
+  };
 })();

@@ -11,7 +11,9 @@
 const Cal = (() => {
   const CONFIG_KEY = 'familie-app.google-config';
   const SELECTED_KEY = 'familie-app.selected-calendars';
-  const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+  // Lezen van agenda's/afspraken + aanmaken van afspraken (beide "sensitive",
+  // niet "restricted"); de agenda-lijst zelf valt onder calendar.readonly.
+  const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
   const API_BASE = 'https://www.googleapis.com/calendar/v3';
 
   let config = null; // { clientId }
@@ -181,8 +183,11 @@ const Cal = (() => {
     }
   }
 
-  async function authorizedFetch(url) {
-    const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  async function authorizedFetch(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: { Authorization: `Bearer ${accessToken}`, ...(options.headers || {}) },
+    });
     if (response.status === 401) {
       const err = new Error('sessie verlopen');
       err.auth = true;
@@ -204,10 +209,12 @@ const Cal = (() => {
       color: item.backgroundColor || '#4285f4',
       primary: !!item.primary,
       visible: item.selected !== false,
+      writable: item.accessRole === 'owner' || item.accessRole === 'writer',
     }));
     // Hoofdagenda bovenaan, de rest alfabetisch.
     calendars.sort((a, b) => (b.primary - a.primary) || a.name.localeCompare(b.name, 'nl'));
     document.getElementById('btn-calendars').hidden = calendars.length === 0;
+    document.getElementById('btn-add-event').hidden = !calendars.some((c) => c.writable);
   }
 
   function fetchEvents(calendarId, start, end) {
@@ -289,6 +296,86 @@ const Cal = (() => {
     }
   }
 
+  // ---- Nieuwe afspraak --------------------------------------------------------
+
+  function openEventDialog() {
+    const select = document.getElementById('event-calendar');
+    select.textContent = '';
+    for (const cal of calendars.filter((c) => c.writable)) {
+      const option = document.createElement('option');
+      option.value = cal.id;
+      option.textContent = cal.name;
+      select.appendChild(option);
+    }
+
+    document.getElementById('event-title').value = '';
+    document.getElementById('event-date').value = App.dateKey(App.getCurrentDate());
+    document.getElementById('event-allday').checked = false;
+    document.getElementById('event-start').value = '09:00';
+    document.getElementById('event-end').value = '10:00';
+    document.getElementById('event-times').hidden = false;
+    setEventError('');
+    Tags.renderMemberChecklist(document.getElementById('event-tags'));
+
+    document.getElementById('event-dialog').showModal();
+    document.getElementById('event-title').focus();
+  }
+
+  function setEventError(message) {
+    const el = document.getElementById('event-error');
+    el.textContent = message;
+    el.hidden = !message;
+  }
+
+  async function submitEvent(e) {
+    e.preventDefault();
+    const title = document.getElementById('event-title').value.trim();
+    const calendarId = document.getElementById('event-calendar').value;
+    const dateStr = document.getElementById('event-date').value;
+    const allDay = document.getElementById('event-allday').checked;
+    if (!title || !calendarId || !dateStr) return;
+
+    const body = { summary: title };
+    if (allDay) {
+      const next = App.parseDateKey(dateStr);
+      next.setDate(next.getDate() + 1);
+      body.start = { date: dateStr };
+      body.end = { date: App.dateKey(next) }; // end.date is exclusief
+    } else {
+      const start = new Date(`${dateStr}T${document.getElementById('event-start').value || '09:00'}`);
+      const endValue = document.getElementById('event-end').value;
+      let end = endValue ? new Date(`${dateStr}T${endValue}`) : null;
+      if (!end || end <= start) end = new Date(start.getTime() + 60 * 60 * 1000);
+      body.start = { dateTime: start.toISOString() };
+      body.end = { dateTime: end.toISOString() };
+    }
+
+    try {
+      setEventError('');
+      await ensureToken();
+      const created = await authorizedFetch(
+        `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+      const names = Tags.readMemberChecklist(document.getElementById('event-tags'));
+      if (created.id && names.length) Tags.setTags(created.id, names);
+      document.getElementById('event-dialog').close();
+      refresh();
+    } catch (err) {
+      if (err.auth || /insufficient|PERMISSION_DENIED/i.test(err.message || '')) {
+        // Eerdere toestemming dekte alleen lezen: opnieuw verbinden vraagt de
+        // nieuwe schrijf-toestemming aan.
+        accessToken = null;
+        connected = false;
+        updateConnectButton();
+        document.getElementById('event-dialog').close();
+        setStatus('Verbind opnieuw met Google om toestemming voor het toevoegen van afspraken te geven.', true);
+      } else {
+        setEventError(`Toevoegen mislukt: ${err.message || 'onbekende fout'}`);
+      }
+    }
+  }
+
   // ---- Agenda-keuze ---------------------------------------------------------
 
   function openCalendarPicker() {
@@ -364,6 +451,14 @@ const Cal = (() => {
     document.getElementById('btn-calendars').addEventListener('click', openCalendarPicker);
     document.getElementById('btn-calendars-close').addEventListener('click', () => {
       document.getElementById('calendars-dialog').close();
+    });
+    document.getElementById('btn-add-event').addEventListener('click', openEventDialog);
+    document.getElementById('event-form').addEventListener('submit', submitEvent);
+    document.getElementById('btn-event-cancel').addEventListener('click', () => {
+      document.getElementById('event-dialog').close();
+    });
+    document.getElementById('event-allday').addEventListener('change', (e) => {
+      document.getElementById('event-times').hidden = e.target.checked;
     });
 
     const dialog = document.getElementById('settings-dialog');

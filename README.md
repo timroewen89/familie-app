@@ -5,7 +5,8 @@ Een lichtgewicht familie-webapp met een **weekoverzicht** gekoppeld aan Google C
 ## Functies
 
 - 📅 **Dag- én weekoverzicht** met een schakelaar, pijltjesnavigatie (*vorige / vandaag / volgende*) en veeggebaren op mobiel; vandaag is gemarkeerd.
-- 🔗 **Google Calendar**: log in met je (persoonlijke) Google-account en zie de afspraken van de zichtbare periode (alleen-lezen).
+- 🔗 **Google Calendar**: log in met je (persoonlijke) Google-account en zie de afspraken van de zichtbare periode.
+- ➕ **Afspraken toevoegen**: maak via "＋ Afspraak" een nieuwe afspraak aan — met titel, datum, tijd (of hele dag), doelagenda én direct persoonstags erbij.
 - 📆 **Meerdere agenda's**: kies via de 📆-knop welke agenda's uit je account meedoen (bijv. je eigen agenda, een gedeelde gezinsagenda en verjaardagen). Elke afspraak krijgt de kleur van zijn agenda uit Google Calendar. Standaard doen de agenda's mee die je in Google Calendar zichtbaar hebt staan.
 - 🏷️ **Persoonstags**: tik op een afspraak om gezinsleden (standaard Tim, Renate, Mick en Davi — aanpasbaar via ⚙️) te taggen, elk met een eigen kleur. Filter de agenda per persoon via de chips boven het overzicht. Tags worden lokaal bewaard (Google Calendar blijft alleen-lezen).
 - 🛒 **Boodschappenlijst**: items toevoegen, afvinken en verwijderen — persistent in je browser, werkt ook offline en zonder Google-login.
@@ -52,9 +53,18 @@ De app bevat bewust **geen** geheimen en gebruikt **geen API-key** — de agenda
 └── PLAN.md         # Ontwerp en stappenplan
 ```
 
+### Scopes in Data Access
+
+Voeg op de pagina *Google Auth Platform → Data Access* deze twee scopes toe (beide "sensitive"):
+
+- `https://www.googleapis.com/auth/calendar.readonly` — agenda's en afspraken lezen
+- `https://www.googleapis.com/auth/calendar.events` — afspraken aanmaken
+
+Had je al verbonden vóór het toevoegen van de events-scope, dan vraagt de app je eenmalig opnieuw te verbinden zodra je een afspraak wilt toevoegen.
+
 ## Privacy & veiligheid
 
-- De agenda wordt **alleen-lezen** benaderd (`calendar.readonly`).
+- De agenda wordt benaderd met de scopes `calendar.readonly` (lezen) en `calendar.events` (afsprakenbeheer — de app gebruikt dit alleen om afspraken **aan te maken**; verwijderen of bewerken zit niet in de app). Agenda-instellingen of delen wijzigen kan met deze scopes sowieso niet.
 - Er is **geen API-key**: de Calendar API wordt aangeroepen met alleen het kortlevende OAuth-token, dat uitsluitend in het geheugen van de pagina leeft.
 - Client-ID, boodschappenlijst en persoonstags blijven in `localStorage` van je eigen browser; er is geen backend en er worden geen gegevens naar derden gestuurd.
 - De Client-ID is per ontwerp publiek en alleen bruikbaar vanaf de origins die jij in de Google Cloud Console toestaat.
