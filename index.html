@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Familie App</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>👨‍👩‍👧‍👦 Familie App</h1>
+  </header>
+
+  <main>
+    <!-- Weekoverzicht -->
+    <section class="panel" id="agenda-panel">
+      <div class="panel-header">
+        <h2>📅 Weekoverzicht</h2>
+        <div class="calendar-actions">
+          <button id="btn-connect" class="btn btn-primary">Verbind met Google Calendar</button>
+          <button id="btn-settings" class="btn btn-ghost" title="Google-instellingen">⚙️</button>
+        </div>
+      </div>
+
+      <div class="week-nav">
+        <button id="btn-prev-week" class="btn" aria-label="Vorige week">◀</button>
+        <div class="week-label" id="week-label"></div>
+        <button id="btn-today" class="btn">Vandaag</button>
+        <button id="btn-next-week" class="btn" aria-label="Volgende week">▶</button>
+      </div>
+
+      <p id="calendar-status" class="status" hidden></p>
+
+      <div class="week-grid" id="week-grid"></div>
+    </section>
+
+    <!-- Boodschappenlijst -->
+    <section class="panel" id="shopping-panel">
+      <div class="panel-header">
+        <h2>🛒 Boodschappenlijst</h2>
+        <span class="counter" id="shopping-counter"></span>
+      </div>
+
+      <form id="shopping-form" autocomplete="off">
+        <input type="text" id="shopping-input" placeholder="Voeg een boodschap toe…" maxlength="100" required>
+        <button type="submit" class="btn btn-primary">Toevoegen</button>
+      </form>
+
+      <ul id="shopping-list" class="shopping-list"></ul>
+
+      <div class="shopping-footer">
+        <button id="btn-clear-done" class="btn btn-ghost">Gekochte items wissen</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Instellingen voor Google Calendar -->
+  <dialog id="settings-dialog">
+    <form method="dialog" id="settings-form">
+      <h2>Google Calendar instellingen</h2>
+      <p class="hint">
+        Maak in de <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>
+        een OAuth Client-ID (webapplicatie) en een API-key aan. Zie de README voor stap-voor-stap instructies.
+        Deze gegevens worden alleen lokaal in je browser bewaard.
+      </p>
+      <label>
+        OAuth Client-ID
+        <input type="text" id="input-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+      </label>
+      <label>
+        API-key
+        <input type="text" id="input-api-key" placeholder="AIza…">
+      </label>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn btn-primary" value="save">Opslaan</button>
+        <button type="button" class="btn btn-ghost" id="btn-settings-cancel">Annuleren</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/shopping.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

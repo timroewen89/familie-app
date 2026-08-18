@@ -1,0 +1,340 @@
+:root {
+  --bg: #f4f5f7;
+  --panel-bg: #ffffff;
+  --text: #1f2933;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --today-bg: #eff6ff;
+  --today-border: #93c5fd;
+  --danger: #dc2626;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.app-header {
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Knoppen */
+.btn {
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--bg);
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.calendar-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+/* Weeknavigatie */
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.week-label {
+  font-weight: 600;
+  min-width: 14rem;
+  text-align: center;
+}
+
+.status {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--today-bg);
+  border: 1px solid var(--today-border);
+  font-size: 0.9rem;
+}
+
+.status.error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: var(--danger);
+}
+
+/* Weekgrid: mobiel gestapeld, desktop 7 kolommen */
+.week-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 800px) {
+  .week-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.day-column {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-height: 6rem;
+  background: var(--panel-bg);
+}
+
+.day-column.today {
+  background: var(--today-bg);
+  border-color: var(--today-border);
+}
+
+.day-header {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.day-header .day-date {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.day-column.today .day-header {
+  color: var(--primary-dark);
+}
+
+.event {
+  font-size: 0.8rem;
+  background: var(--bg);
+  border-left: 3px solid var(--primary);
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  margin-bottom: 0.3rem;
+  overflow-wrap: anywhere;
+}
+
+.event .event-time {
+  color: var(--text-muted);
+  display: block;
+  font-size: 0.72rem;
+}
+
+.event.all-day {
+  border-left-color: #059669;
+}
+
+.day-empty {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Boodschappenlijst */
+#shopping-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+#shopping-input {
+  flex: 1;
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#shopping-input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.shopping-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shopping-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shopping-list li:last-child {
+  border-bottom: none;
+}
+
+.shopping-list input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.shopping-list .item-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.shopping-list li.done .item-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.shopping-list .btn-delete {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 6px;
+}
+
+.shopping-list .btn-delete:hover {
+  color: var(--danger);
+  background: #fef2f2;
+}
+
+.shopping-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.counter {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.shopping-footer {
+  margin-top: 0.5rem;
+  text-align: right;
+}
+
+/* Instellingen-dialog */
+dialog {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  max-width: 26rem;
+  width: calc(100% - 2rem);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+dialog h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+dialog .hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+dialog label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+dialog input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-weight: 400;
+  padding: 0.4rem 0.6rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
