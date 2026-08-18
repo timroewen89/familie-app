@@ -89,13 +89,16 @@ const Picnic = (() => {
 
   // ---- API via de proxy --------------------------------------------------------
 
+  function proxyBase() {
+    return config.proxyUrl.replace(/\/+$/, '');
+  }
+
   async function request(method, path, body, withPicnicHeaders = false, includeAuth = true) {
     const headers = { 'Content-Type': 'application/json; charset=UTF-8' };
     if (includeAuth && config.authKey) headers['x-picnic-auth'] = config.authKey;
     if (withPicnicHeaders) Object.assign(headers, PICNIC_HEADERS);
 
-    const base = config.proxyUrl.replace(/\/+$/, '');
-    const response = await fetch(base + API_PATH + path, {
+    const response = await fetch(proxyBase() + API_PATH + path, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -309,6 +312,17 @@ const Picnic = (() => {
   function buildResultRow(unit) {
     const row = document.createElement('div');
     row.className = 'picnic-result';
+
+    if (unit.image_id) {
+      const img = document.createElement('img');
+      img.className = 'picnic-result-img';
+      img.loading = 'lazy';
+      img.alt = '';
+      img.src = `${proxyBase()}/static/images/${encodeURIComponent(unit.image_id)}/small.png`;
+      // Als de afbeelding niet laadt (bijv. gewijzigde Picnic-API), gewoon weglaten.
+      img.addEventListener('error', () => img.remove());
+      row.appendChild(img);
+    }
 
     const info = document.createElement('div');
     info.className = 'picnic-result-info';
