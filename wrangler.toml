@@ -1,0 +1,7 @@
+# Cloudflare Workers-configuratie voor de Picnic-proxy.
+# Wordt gebruikt door de Git-integratie van Cloudflare (Workers Builds):
+# elke push naar main deployt worker/picnic-proxy.js automatisch opnieuw.
+name = "picnic-proxy"
+main = "worker/picnic-proxy.js"
+compatibility_date = "2026-08-18"
+workers_dev = true
