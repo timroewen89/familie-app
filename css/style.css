@@ -59,10 +59,105 @@ body {
   border-bottom-style: solid;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.app-logo {
+  font-size: 1.35rem;
+}
+
+/* Tabs: op desktop rechts in de header, op mobiel als balk onderaan */
+.tab-bar {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tab {
+  position: relative;
+  font: inherit;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.4rem 1.1rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: #f1f3f4;
+}
+
+.tab.active {
+  background: var(--today-bg);
+  color: var(--g-blue-darker);
+}
+
+.tab-badge {
+  background: var(--g-red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 799px) {
+  .app-header {
+    justify-content: center;
+  }
+
+  .tab-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    background: var(--panel-bg);
+    border-top: 1px solid var(--border);
+    padding: 0.35rem 0.75rem calc(0.35rem + env(safe-area-inset-bottom));
+    gap: 0.5rem;
+  }
+
+  .tab {
+    flex: 1;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+  }
+
+  .tab .tab-icon {
+    font-size: 1.25rem;
+  }
+
+  .tab-badge {
+    position: absolute;
+    transform: translate(1.1rem, -1.35rem);
+  }
+
+  /* Ruimte zodat de onderste content niet achter de tabbalk valt */
+  main {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
 }
 
 main {

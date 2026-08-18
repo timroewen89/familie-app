@@ -17,7 +17,16 @@
 </head>
 <body>
   <header class="app-header">
-    <h1>👨‍👩‍👧‍👦 Familie App</h1>
+    <h1><span class="app-logo">👨‍👩‍👧‍👦</span> Familie App</h1>
+    <nav class="tab-bar" aria-label="Secties">
+      <button type="button" class="tab" id="tab-agenda" aria-controls="agenda-panel">
+        <span class="tab-icon">📅</span><span class="tab-label">Agenda</span>
+      </button>
+      <button type="button" class="tab" id="tab-shopping" aria-controls="shopping-panel">
+        <span class="tab-icon">🛒</span><span class="tab-label">Boodschappen</span>
+        <span class="tab-badge" id="shopping-badge" hidden></span>
+      </button>
+    </nav>
   </header>
 
   <main>

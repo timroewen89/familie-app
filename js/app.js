@@ -199,7 +199,26 @@ const App = (() => {
     }, { passive: true });
   }
 
+  // ---- Tabs (Agenda / Boodschappen) --------------------------------------
+
+  const TAB_KEY = 'familie-app.tab';
+
+  function setTab(tab) {
+    localStorage.setItem(TAB_KEY, tab);
+    document.getElementById('agenda-panel').hidden = tab !== 'agenda';
+    document.getElementById('shopping-panel').hidden = tab !== 'shopping';
+    document.getElementById('tab-agenda').classList.toggle('active', tab === 'agenda');
+    document.getElementById('tab-shopping').classList.toggle('active', tab === 'shopping');
+  }
+
+  function initTabs() {
+    document.getElementById('tab-agenda').addEventListener('click', () => setTab('agenda'));
+    document.getElementById('tab-shopping').addEventListener('click', () => setTab('shopping'));
+    setTab(localStorage.getItem(TAB_KEY) === 'shopping' ? 'shopping' : 'agenda');
+  }
+
   function init() {
+    initTabs();
     document.getElementById('btn-prev').addEventListener('click', () => step(-1));
     document.getElementById('btn-next').addEventListener('click', () => step(1));
     document.getElementById('btn-today').addEventListener('click', () => goTo(new Date()));

@@ -96,6 +96,7 @@ const Shopping = (() => {
     const counter = document.getElementById('shopping-counter');
     list.textContent = '';
     updateShareButton();
+    updateBadge();
 
     if (items.length === 0) {
       const empty = document.createElement('li');
@@ -140,6 +141,14 @@ const Shopping = (() => {
 
   function updateShareButton() {
     document.getElementById('btn-share-list').disabled = items.every((i) => i.done);
+  }
+
+  /** Badge op de boodschappen-tab met het aantal nog te kopen items. */
+  function updateBadge() {
+    const badge = document.getElementById('shopping-badge');
+    const open = items.filter((i) => !i.done).length;
+    badge.textContent = open;
+    badge.hidden = open === 0;
   }
 
   function init() {
