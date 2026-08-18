@@ -48,14 +48,13 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
-    if (!allowedOrigin) {
-      return new Response('Origin niet toegestaan', { status: 403, headers: corsHeaders });
-    }
 
     const url = new URL(request.url);
 
-    // Productafbeeldingen (alleen GET, vast patroon) — voor de thumbnails
-    // in de zoekresultaten van de app.
+    // Productafbeeldingen (alleen GET, vast patroon) — voor de thumbnails in
+    // de zoekresultaten. Deze staan vóór de origin-controle: <img>-tags sturen
+    // niet altijd een Origin-header mee, en de foto's zijn publiek materiaal.
+    // De API-paden hieronder blijven wél strikt origin-gebonden.
     const imageMatch = url.pathname.match(
       /^\/static\/images\/[A-Za-z0-9_-]+\/(tiny|small|medium|large|extra-large)\.png$/
     );
@@ -68,6 +67,10 @@ export default {
       imageHeaders.set('Content-Type', upstream.headers.get('Content-Type') || 'image/png');
       imageHeaders.set('Cache-Control', 'public, max-age=86400');
       return new Response(upstream.body, { status: upstream.status, headers: imageHeaders });
+    }
+
+    if (!allowedOrigin) {
+      return new Response('Origin niet toegestaan', { status: 403, headers: corsHeaders });
     }
 
     const match = url.pathname.match(/^\/api\/\d+(\/.*)$/);

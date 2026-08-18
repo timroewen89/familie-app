@@ -161,10 +161,19 @@ const Picnic = (() => {
     const page = await response.json();
     // De resultaten zitten als 'sellingUnit'-knopen verspreid in een dynamische
     // paginastructuur; recursief verzamelen is robuuster dan een vast pad.
+    // De productfoto zit soms niet in sellingUnit.image_id maar in het
+    // sellingUnitImageConfiguration-veld van dezelfde tegel.
     const units = [];
     (function walk(node) {
       if (!node || typeof node !== 'object') return;
-      if (node.sellingUnit && node.sellingUnit.id) units.push(node.sellingUnit);
+      if (node.sellingUnit && node.sellingUnit.id) {
+        const unit = { ...node.sellingUnit };
+        if (!unit.image_id) {
+          unit.image_id = node.sellingUnitImageConfiguration?.id
+            || (Array.isArray(unit.image_ids) ? unit.image_ids[0] : null);
+        }
+        units.push(unit);
+      }
       for (const value of Object.values(node)) walk(value);
     })(page);
     const seen = new Set();
@@ -318,6 +327,10 @@ const Picnic = (() => {
       img.className = 'picnic-result-img';
       img.loading = 'lazy';
       img.alt = '';
+      // CORS-modus: zo stuurt de browser de Origin-header mee en laat de
+      // proxy (die op origin controleert) de afbeelding door. Een gewone
+      // <img> stuurt geen Origin en zou een 403 krijgen.
+      img.crossOrigin = 'anonymous';
       img.src = `${proxyBase()}/static/images/${encodeURIComponent(unit.image_id)}/small.png`;
       // Als de afbeelding niet laadt (bijv. gewijzigde Picnic-API), gewoon weglaten.
       img.addEventListener('error', () => img.remove());
