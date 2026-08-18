@@ -70,12 +70,20 @@ Met de Picnic-koppeling zoek je een boodschappenitem rechtstreeks op in Picnic e
 
 ### Stap 1: proxy deployen (eenmalig, gratis)
 
-Browsers mogen de Picnic-API niet rechtstreeks aanroepen; daarom draait er een piepklein doorgeefluik als [Cloudflare Worker](https://workers.cloudflare.com/) (gratis, ruim voldoende voor een gezin):
+Browsers mogen de Picnic-API niet rechtstreeks aanroepen; daarom draait er een piepklein doorgeefluik als [Cloudflare Worker](https://workers.cloudflare.com/) (gratis, ruim voldoende voor een gezin). Controleer vooraf dat jouw app-URL in `ALLOWED_ORIGINS` staat in [`worker/picnic-proxy.js`](worker/picnic-proxy.js).
+
+**Optie A — rechtstreeks vanuit GitHub (aanbevolen):** elke push naar `main` deployt de Worker automatisch opnieuw.
 
 1. Maak een gratis account op [dash.cloudflare.com](https://dash.cloudflare.com/).
-2. Ga naar **Workers & Pages → Create → Create Worker**, geef hem een naam (bijv. `picnic-proxy`) en klik **Deploy**.
-3. Klik **Edit code**, vervang de inhoud door [`worker/picnic-proxy.js`](worker/picnic-proxy.js) uit deze repo en pas bovenin `ALLOWED_ORIGINS` aan naar jouw eigen app-URL('s).
-4. Klik **Deploy** en kopieer de Worker-URL (bijv. `https://picnic-proxy.jouwnaam.workers.dev`).
+2. Ga naar **Workers & Pages → Create → Import a repository**, koppel je GitHub-account en kies deze repo.
+3. Cloudflare leest [`wrangler.toml`](wrangler.toml) uit de repo; laat het build command leeg en het deploy command op `npx wrangler deploy` staan. Klik **Deploy**.
+4. Kopieer na de eerste build de Worker-URL (bijv. `https://picnic-proxy.jouwnaam.workers.dev`).
+
+**Optie B — handmatig plakken:**
+
+1. Ga naar **Workers & Pages → Create → Start with Hello World** en klik **Deploy**.
+2. Klik **Edit code**, vervang de inhoud door [`worker/picnic-proxy.js`](worker/picnic-proxy.js) en klik **Deploy**.
+3. Kopieer de Worker-URL. (Let op: bij deze optie moet je wijzigingen aan de Worker later zelf opnieuw plakken.)
 
 De Worker slaat niets op en logt niets; hij geeft verzoeken alleen door en voegt de headers toe die Picnic verwacht. Door `ALLOWED_ORIGINS` kan alleen jouw eigen app hem gebruiken.
 
