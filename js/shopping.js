@@ -22,16 +22,30 @@ const Shopping = (() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }
 
+  /** Voegt een item toe en geeft het id terug (o.a. voor de Picnic-koppeling). */
   function addItem(name) {
     const trimmed = name.trim();
-    if (!trimmed) return;
-    items.push({
+    if (!trimmed) return null;
+    const item = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: trimmed,
       done: false,
-    });
+    };
+    items.push(item);
     save();
     render();
+    return item.id;
+  }
+
+  /** Hernoemt een item, bijv. als het aantal in het Picnic-mandje wijzigt. */
+  function renameItem(id, name) {
+    const item = items.find((i) => i.id === id);
+    const trimmed = name.trim();
+    if (item && trimmed) {
+      item.name = trimmed;
+      save();
+      render();
+    }
   }
 
   function toggleItem(id) {
@@ -168,5 +182,5 @@ const Shopping = (() => {
     document.getElementById('btn-share-list').addEventListener('click', shareList);
   }
 
-  return { init, rerender: render };
+  return { init, rerender: render, addItem, renameItem, removeItem };
 })();
