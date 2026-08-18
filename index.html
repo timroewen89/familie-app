@@ -2,9 +2,12 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Familie App</title>
   <meta name="theme-color" content="#1a73e8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Familie">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -18,26 +21,36 @@
   </header>
 
   <main>
-    <!-- Weekoverzicht -->
+    <!-- Agenda -->
     <section class="panel" id="agenda-panel">
       <div class="panel-header">
-        <h2>📅 Weekoverzicht</h2>
+        <h2>📅 Agenda</h2>
         <div class="calendar-actions">
-          <button id="btn-connect" class="btn btn-primary">Verbind met Google Calendar</button>
-          <button id="btn-settings" class="btn btn-ghost" title="Google-instellingen">⚙️</button>
+          <button id="btn-connect" class="btn btn-primary">Verbind met Google</button>
+          <button id="btn-settings" class="btn btn-ghost" title="Instellingen" aria-label="Instellingen">⚙️</button>
         </div>
       </div>
 
-      <div class="week-nav">
-        <button id="btn-prev-week" class="btn" aria-label="Vorige week">◀</button>
-        <div class="week-label" id="week-label"></div>
+      <div class="toolbar">
+        <div class="view-toggle" role="group" aria-label="Weergave">
+          <button id="btn-view-day" class="btn toggle">Dag</button>
+          <button id="btn-view-week" class="btn toggle">Week</button>
+        </div>
         <button id="btn-today" class="btn">Vandaag</button>
-        <button id="btn-next-week" class="btn" aria-label="Volgende week">▶</button>
       </div>
+
+      <div class="week-nav">
+        <button id="btn-prev" class="btn nav-arrow" aria-label="Vorige">◀</button>
+        <div class="week-label" id="week-label"></div>
+        <button id="btn-next" class="btn nav-arrow" aria-label="Volgende">▶</button>
+      </div>
+
+      <div id="filter-bar" class="filter-bar" aria-label="Filter op gezinslid"></div>
 
       <p id="calendar-status" class="status" hidden></p>
 
       <div class="week-grid" id="week-grid"></div>
+      <p class="swipe-hint">Tip: veeg naar links of rechts om te bladeren. Tik op een afspraak om personen te taggen.</p>
     </section>
 
     <!-- Boodschappenlijst -->
@@ -49,7 +62,7 @@
 
       <form id="shopping-form" autocomplete="off">
         <input type="text" id="shopping-input" placeholder="Voeg een boodschap toe…" maxlength="100" required>
-        <button type="submit" class="btn btn-primary">Toevoegen</button>
+        <button type="submit" class="btn btn-primary">+</button>
       </form>
 
       <ul id="shopping-list" class="shopping-list"></ul>
@@ -60,10 +73,17 @@
     </section>
   </main>
 
-  <!-- Instellingen voor Google Calendar -->
+  <!-- Instellingen -->
   <dialog id="settings-dialog">
     <form method="dialog" id="settings-form">
-      <h2>Google Calendar instellingen</h2>
+      <h2>Instellingen</h2>
+
+      <label>
+        Gezinsleden (gescheiden door komma's)
+        <input type="text" id="input-members" placeholder="Tim, Renate, Mick, Davi">
+      </label>
+
+      <h3>Google Calendar</h3>
       <p class="hint">
         Maak in de <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>
         een OAuth Client-ID (webapplicatie) en een API-key aan. Zie de README voor stap-voor-stap instructies.
@@ -84,7 +104,20 @@
     </form>
   </dialog>
 
+  <!-- Personen taggen op een afspraak -->
+  <dialog id="tags-dialog">
+    <form method="dialog">
+      <h2>Wie doet er mee?</h2>
+      <p class="hint" id="tags-event-title"></p>
+      <div id="tags-options" class="tags-options"></div>
+      <div class="dialog-buttons">
+        <button type="submit" class="btn btn-primary">Klaar</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="js/shopping.js"></script>
+  <script src="js/tags.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -135,7 +135,7 @@ const Cal = (() => {
       });
       groupEvents(response.result.items || []);
       setStatus('');
-      App.renderWeek();
+      App.render();
     } catch (err) {
       const message = err.result?.error?.message || err.message || 'onbekende fout';
       if (err.status === 401 || err.status === 403) {
@@ -157,11 +157,12 @@ const Cal = (() => {
       if (isAllDay) {
         const endDate = App.parseDateKey(event.end.date);
         for (let d = App.parseDateKey(event.start.date); d < endDate; d.setDate(d.getDate() + 1)) {
-          pushEvent(App.dateKey(d), { title: event.summary || '(zonder titel)', allDay: true });
+          pushEvent(App.dateKey(d), { id: event.id, title: event.summary || '(zonder titel)', allDay: true });
         }
       } else {
         const startDate = new Date(event.start.dateTime);
         pushEvent(App.dateKey(startDate), {
+          id: event.id,
           title: event.summary || '(zonder titel)',
           allDay: false,
           time: startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
@@ -193,7 +194,7 @@ const Cal = (() => {
 
   function updateConnectButton() {
     const btn = document.getElementById('btn-connect');
-    btn.textContent = connected ? 'Verbonden ✓' : 'Verbind met Google Calendar';
+    btn.textContent = connected ? 'Verbonden ✓' : 'Verbind met Google';
     btn.disabled = connected;
   }
 
@@ -213,15 +214,17 @@ const Cal = (() => {
 
     const dialog = document.getElementById('settings-dialog');
     document.getElementById('settings-form').addEventListener('submit', () => {
-      saveConfig(
-        document.getElementById('input-client-id').value,
-        document.getElementById('input-api-key').value
-      );
-      // Nieuwe instellingen: bibliotheken opnieuw initialiseren bij volgende verbinding.
-      gapiReady = false;
-      tokenClient = null;
-      connected = false;
-      updateConnectButton();
+      const newClientId = document.getElementById('input-client-id').value.trim();
+      const newApiKey = document.getElementById('input-api-key').value.trim();
+      const changed = newClientId !== (config?.clientId || '') || newApiKey !== (config?.apiKey || '');
+      saveConfig(newClientId, newApiKey);
+      if (changed) {
+        // Nieuwe Google-gegevens: bibliotheken opnieuw initialiseren bij volgende verbinding.
+        gapiReady = false;
+        tokenClient = null;
+        connected = false;
+        updateConnectButton();
+      }
     });
     document.getElementById('btn-settings-cancel').addEventListener('click', () => dialog.close());
 
