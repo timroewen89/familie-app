@@ -7,6 +7,7 @@ const Icons = (() => {
   const PATHS = {
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
   };
 
   function html(name) {

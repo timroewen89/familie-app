@@ -698,9 +698,36 @@ main {
   padding: 0.4rem 0.8rem;
 }
 
-.picnic-add.picnic-added {
-  background: var(--g-green);
-  border-color: var(--g-green);
+/* Aantal-teller per product (− n +) */
+.picnic-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.picnic-actions.busy {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.picnic-step-btn {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0.35rem;
+  border-radius: 50%;
+}
+
+.picnic-step-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.picnic-count {
+  min-width: 1.4rem;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .counter {

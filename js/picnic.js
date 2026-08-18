@@ -180,8 +180,12 @@ const Picnic = (() => {
     return units.filter((u) => !seen.has(u.id) && seen.add(u.id));
   }
 
-  async function addToCart(productId) {
-    await request('POST', '/cart/add_product', { product_id: productId, count: 1 }, true);
+  async function addToCart(productId, count = 1) {
+    await request('POST', '/cart/add_product', { product_id: productId, count }, true);
+  }
+
+  async function removeFromCart(productId, count = 1) {
+    await request('POST', '/cart/remove_product', { product_id: productId, count }, true);
   }
 
   // ---- UI: knop per boodschappenitem -------------------------------------------
@@ -348,27 +352,68 @@ const Picnic = (() => {
     meta.textContent = [unit.unit_quantity, price].filter(Boolean).join(' · ');
     info.append(name, meta);
 
-    const add = document.createElement('button');
-    add.type = 'button';
-    add.className = 'btn btn-primary picnic-add';
-    const addLabel = `${Icons.html('plus')}Mandje`;
-    add.innerHTML = addLabel;
-    add.addEventListener('click', async () => {
-      add.disabled = true;
-      add.textContent = 'Bezig…';
-      try {
-        await addToCart(unit.id);
-        add.textContent = 'In mandje ✓';
-        add.classList.add('picnic-added');
-      } catch (err) {
-        add.disabled = false;
-        add.innerHTML = addLabel;
-        alert(`Toevoegen mislukt: ${err.message || 'onbekende fout'}`);
-      }
-    });
-
-    row.append(info, add);
+    row.append(info, buildStepper(unit));
     return row;
+  }
+
+  /**
+   * Mandje-bediening per product: eerst een "Mandje"-knop; na het toevoegen
+   * een teller met − en + (zoals in de Picnic-app zelf). De teller toont wat
+   * je in dít zoekvenster hebt toegevoegd; − haalt ook echt uit je mandje.
+   */
+  function buildStepper(unit) {
+    const actions = document.createElement('div');
+    actions.className = 'picnic-actions';
+    let inBasket = 0;
+    const maxCount = Number(unit.max_count) > 0 ? Number(unit.max_count) : 99;
+
+    async function mutate(delta) {
+      actions.classList.add('busy');
+      try {
+        if (delta > 0) await addToCart(unit.id, 1);
+        else await removeFromCart(unit.id, 1);
+        inBasket += delta;
+      } catch (err) {
+        alert(`Mandje bijwerken mislukt: ${err.message || 'onbekende fout'}`);
+      }
+      actions.classList.remove('busy');
+      render();
+    }
+
+    function stepButton(kind, label, delta, disabled) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn picnic-step-btn';
+      btn.innerHTML = Icons.html(kind);
+      btn.setAttribute('aria-label', `${label} ${unit.name}`);
+      btn.disabled = disabled;
+      btn.addEventListener('click', () => mutate(delta));
+      return btn;
+    }
+
+    function render() {
+      actions.textContent = '';
+      if (inBasket === 0) {
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'btn btn-primary picnic-add';
+        add.innerHTML = `${Icons.html('plus')}Mandje`;
+        add.addEventListener('click', () => mutate(1));
+        actions.appendChild(add);
+      } else {
+        const count = document.createElement('span');
+        count.className = 'picnic-count';
+        count.textContent = inBasket;
+        actions.append(
+          stepButton('minus', 'Eén minder', -1, false),
+          count,
+          stepButton('plus', 'Eén extra', 1, inBasket >= maxCount)
+        );
+      }
+    }
+
+    render();
+    return actions;
   }
 
   // ---- UI: instellingen ---------------------------------------------------------------

@@ -30,6 +30,7 @@ const ALLOWED_PATHS = [
   '/user/logout',
   '/pages/search-page-results',
   '/cart/add_product',
+  '/cart/remove_product',
 ];
 
 export default {
