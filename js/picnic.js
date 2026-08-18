@@ -20,6 +20,12 @@ const Picnic = (() => {
   let config = null; // { proxyUrl, authKey }
   /** Boodschappenitem waarvoor een Picnic-zoekactie loopt. */
   let currentItemName = null;
+  /**
+   * Alleen bij zoeken vanuit het invoerveld: mandje-toevoegingen ook op het
+   * lijstje zetten. Bij zoeken vanaf een bestaand lijstje-item (P-knop) niet,
+   * want dan staat het item er al.
+   */
+  let linkToList = false;
 
   // ---- MD5 (RFC 1321) -------------------------------------------------------
   // Picnic's login verwacht md5(wachtwoord) als secret. Browsers hebben geen
@@ -199,12 +205,13 @@ const Picnic = (() => {
     btn.textContent = 'P';
     btn.title = `"${item.name}" zoeken in Picnic`;
     btn.setAttribute('aria-label', `${item.name} zoeken in Picnic`);
-    btn.addEventListener('click', () => startSearch(item.name));
+    btn.addEventListener('click', () => startSearch(item.name, false));
     return btn;
   }
 
-  function startSearch(itemName) {
+  function startSearch(itemName, addToList = false) {
     currentItemName = itemName;
+    linkToList = addToList;
     if (!isLoggedIn()) {
       openLoginDialog();
     } else {
@@ -212,7 +219,7 @@ const Picnic = (() => {
     }
   }
 
-  /** Zoekt direct op de tekst in het invoerveld, zonder het item eerst aan de lijst toe te voegen. */
+  /** Zoekt direct op de tekst in het invoerveld; mandje-toevoegingen komen dan ook op het lijstje. */
   function quickSearch() {
     const input = document.getElementById('shopping-input');
     const text = input.value.trim();
@@ -220,7 +227,7 @@ const Picnic = (() => {
       input.focus();
       return;
     }
-    startSearch(text);
+    startSearch(text, true);
   }
 
   function updateQuickButton() {
@@ -366,6 +373,24 @@ const Picnic = (() => {
     actions.className = 'picnic-actions';
     let inBasket = 0;
     const maxCount = Number(unit.max_count) > 0 ? Number(unit.max_count) : 99;
+    // Gekoppeld lijstje-item (alleen bij zoeken vanuit het invoerveld).
+    const addToList = linkToList;
+    let listItemId = null;
+
+    function syncListItem() {
+      if (!addToList) return;
+      const label = inBasket > 1 ? `${inBasket}× ${unit.name}` : unit.name;
+      if (inBasket === 0 && listItemId) {
+        Shopping.removeItem(listItemId);
+        listItemId = null;
+      } else if (inBasket > 0 && !listItemId) {
+        listItemId = Shopping.addItem(label);
+        // Het getypte zoekwoord is verwerkt: veld leegmaken.
+        document.getElementById('shopping-input').value = '';
+      } else if (listItemId) {
+        Shopping.renameItem(listItemId, label);
+      }
+    }
 
     async function mutate(delta) {
       actions.classList.add('busy');
@@ -373,6 +398,7 @@ const Picnic = (() => {
         if (delta > 0) await addToCart(unit.id, 1);
         else await removeFromCart(unit.id, 1);
         inBasket += delta;
+        syncListItem();
       } catch (err) {
         alert(`Mandje bijwerken mislukt: ${err.message || 'onbekende fout'}`);
       }
