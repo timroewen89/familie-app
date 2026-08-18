@@ -1,20 +1,28 @@
 /**
- * App-opstart en weeknavigatie.
- * Beheert de zichtbare week en rendert het weekgrid; de events zelf
- * komen uit de Cal-module (Google Calendar).
+ * App-opstart, dag/week-weergave en navigatie.
+ * Beheert de zichtbare periode en rendert het grid; de events komen uit de
+ * Cal-module (Google Calendar), de persoonstags uit de Tags-module.
  */
 const App = (() => {
+  const VIEW_KEY = 'familie-app.view';
   const DAY_NAMES = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag'];
 
-  /** Maandag (00:00 lokale tijd) van de zichtbare week. */
-  let currentMonday = mondayOf(new Date());
+  /** 'week' of 'day' */
+  let viewMode = localStorage.getItem(VIEW_KEY) === 'day' ? 'day' : 'week';
+  /** De dag die centraal staat: in dagweergave de getoonde dag, in weekweergave een dag binnen de week. */
+  let currentDate = stripTime(new Date());
+  /** Maandag van de laatst opgehaalde week, om onnodig herladen te voorkomen. */
+  let lastFetchedWeek = null;
 
   // ---- Datumhulpjes ---------------------------------------------------------
 
+  function stripTime(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
   function mondayOf(date) {
-    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const day = d.getDay(); // 0 = zondag
-    d.setDate(d.getDate() - ((day + 6) % 7));
+    const d = stripTime(date);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // getDay(): 0 = zondag
     return d;
   }
 
@@ -47,98 +55,167 @@ const App = (() => {
 
   /** Begin (maandag 00:00) en einde (volgende maandag 00:00) van de zichtbare week. */
   function getWeekRange() {
-    return { start: new Date(currentMonday), end: addDays(currentMonday, 7) };
+    const monday = mondayOf(currentDate);
+    return { start: monday, end: addDays(monday, 7) };
   }
 
-  // ---- Renderen ---------------------------------------------------------------
+  // ---- Renderen -------------------------------------------------------------
 
-  function renderWeekLabel() {
-    const sunday = addDays(currentMonday, 6);
-    const opts = { day: 'numeric', month: 'short' };
-    const from = currentMonday.toLocaleDateString('nl-NL', opts);
-    const to = sunday.toLocaleDateString('nl-NL', { ...opts, year: 'numeric' });
-    document.getElementById('week-label').textContent =
-      `Week ${isoWeekNumber(currentMonday)} · ${from} – ${to}`;
+  function formatLabel() {
+    if (viewMode === 'day') {
+      return currentDate.toLocaleDateString('nl-NL', {
+        weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
+      });
+    }
+    const monday = mondayOf(currentDate);
+    const sunday = addDays(monday, 6);
+    const from = monday.getMonth() === sunday.getMonth()
+      ? String(monday.getDate())
+      : monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    const to = sunday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `Week ${isoWeekNumber(monday)} · ${from} – ${to}`;
   }
 
-  function renderWeek() {
-    renderWeekLabel();
+  function buildEventElement(event) {
+    const el = document.createElement('div');
+    el.className = 'event';
+    if (event.allDay) el.classList.add('all-day');
+    if (event.time) {
+      const time = document.createElement('span');
+      time.className = 'event-time';
+      time.textContent = event.time;
+      el.appendChild(time);
+    }
+    el.appendChild(document.createTextNode(event.title));
+
+    const chips = Tags.chipsFor(event.id);
+    if (chips) el.appendChild(chips);
+
+    if (event.id) {
+      el.setAttribute('role', 'button');
+      el.title = 'Tik om personen te taggen';
+      el.addEventListener('click', () => Tags.openDialog(event.id, event.title));
+    }
+    return el;
+  }
+
+  function buildDayColumn(date, dayView) {
+    const key = dateKey(date);
+    const column = document.createElement('div');
+    column.className = 'day-column';
+    if (dayView) column.classList.add('day-view');
+    if (key === dateKey(new Date())) column.classList.add('today');
+
+    const header = document.createElement('div');
+    header.className = 'day-header';
+    const name = document.createElement('span');
+    name.textContent = DAY_NAMES[(date.getDay() + 6) % 7];
+    const dayDate = document.createElement('span');
+    dayDate.className = 'day-date';
+    dayDate.textContent = date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    header.append(name, dayDate);
+    column.appendChild(header);
+
+    const events = Cal.getEventsForDay(key).filter((e) => Tags.passesFilter(e.id));
+    // Hele-dag-events bovenaan.
+    events.sort((a, b) => (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0));
+
+    if (events.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'day-empty';
+      empty.textContent = Cal.isConnected() ? 'Geen afspraken' : '—';
+      column.appendChild(empty);
+    } else {
+      for (const event of events) column.appendChild(buildEventElement(event));
+    }
+    return column;
+  }
+
+  function render() {
+    document.getElementById('week-label').textContent = formatLabel();
+    document.getElementById('btn-view-day').classList.toggle('active', viewMode === 'day');
+    document.getElementById('btn-view-week').classList.toggle('active', viewMode === 'week');
+    Tags.renderFilterBar();
 
     const grid = document.getElementById('week-grid');
     grid.textContent = '';
-    const todayKey = dateKey(new Date());
+    grid.classList.toggle('day-mode', viewMode === 'day');
 
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(currentMonday, i);
-      const key = dateKey(date);
-
-      const column = document.createElement('div');
-      column.className = 'day-column';
-      if (key === todayKey) column.classList.add('today');
-
-      const header = document.createElement('div');
-      header.className = 'day-header';
-      const name = document.createElement('span');
-      name.textContent = DAY_NAMES[i];
-      const dayDate = document.createElement('span');
-      dayDate.className = 'day-date';
-      dayDate.textContent = date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
-      header.append(name, dayDate);
-      column.appendChild(header);
-
-      const events = Cal.getEventsForDay(key);
-      // Hele-dag-events bovenaan.
-      events.sort((a, b) => (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0));
-
-      if (events.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'day-empty';
-        empty.textContent = Cal.isConnected() ? 'Geen afspraken' : '—';
-        column.appendChild(empty);
-      } else {
-        for (const event of events) {
-          const el = document.createElement('div');
-          el.className = 'event';
-          if (event.allDay) el.classList.add('all-day');
-          if (event.time) {
-            const time = document.createElement('span');
-            time.className = 'event-time';
-            time.textContent = event.time;
-            el.appendChild(time);
-          }
-          el.appendChild(document.createTextNode(event.title));
-          column.appendChild(el);
-        }
+    if (viewMode === 'day') {
+      grid.appendChild(buildDayColumn(currentDate, true));
+    } else {
+      const monday = mondayOf(currentDate);
+      for (let i = 0; i < 7; i++) {
+        grid.appendChild(buildDayColumn(addDays(monday, i), false));
       }
-
-      grid.appendChild(column);
     }
   }
 
-  // ---- Navigatie ----------------------------------------------------------
+  // ---- Navigatie ------------------------------------------------------------
 
-  function goToWeek(monday) {
-    currentMonday = monday;
-    renderWeek();
-    Cal.refresh();
+  function refreshIfWeekChanged() {
+    const weekKey = dateKey(mondayOf(currentDate));
+    if (weekKey !== lastFetchedWeek) {
+      lastFetchedWeek = weekKey;
+      Cal.refresh();
+    }
+  }
+
+  function goTo(date) {
+    currentDate = stripTime(date);
+    render();
+    refreshIfWeekChanged();
+  }
+
+  function step(direction) {
+    goTo(addDays(currentDate, direction * (viewMode === 'day' ? 1 : 7)));
+  }
+
+  function setView(mode) {
+    viewMode = mode;
+    localStorage.setItem(VIEW_KEY, mode);
+    render();
+  }
+
+  /** Veeggebaren: naar links = volgende dag/week, naar rechts = vorige. */
+  function initSwipe() {
+    const grid = document.getElementById('week-grid');
+    let startX = null;
+    let startY = null;
+    grid.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    grid.addEventListener('touchend', (e) => {
+      if (startX === null) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      startX = startY = null;
+      // Alleen duidelijk horizontale vegen; verticaal scrollen blijft gewoon werken.
+      if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+        step(dx < 0 ? 1 : -1);
+      }
+    }, { passive: true });
   }
 
   function init() {
-    document.getElementById('btn-prev-week')
-      .addEventListener('click', () => goToWeek(addDays(currentMonday, -7)));
-    document.getElementById('btn-next-week')
-      .addEventListener('click', () => goToWeek(addDays(currentMonday, 7)));
-    document.getElementById('btn-today')
-      .addEventListener('click', () => goToWeek(mondayOf(new Date())));
+    document.getElementById('btn-prev').addEventListener('click', () => step(-1));
+    document.getElementById('btn-next').addEventListener('click', () => step(1));
+    document.getElementById('btn-today').addEventListener('click', () => goTo(new Date()));
+    document.getElementById('btn-view-day').addEventListener('click', () => setView('day'));
+    document.getElementById('btn-view-week').addEventListener('click', () => setView('week'));
+    initSwipe();
 
-    renderWeek();
+    lastFetchedWeek = dateKey(mondayOf(currentDate));
+    render();
   }
 
-  return { init, renderWeek, getWeekRange, dateKey, parseDateKey };
+  return { init, render, getWeekRange, dateKey, parseDateKey };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
   Shopping.init();
+  Tags.init();
   Cal.init();
   App.init();
 });
