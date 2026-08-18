@@ -501,7 +501,14 @@ main {
 
 .shopping-footer {
   margin-top: 0.5rem;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+#btn-share-list:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Instellingen-dialog */
