@@ -16,7 +16,8 @@ const { launch, BASE, PNG_1PX } = require('./_helpers');
   await page.click('#settings-form button[value=save]');
   let tags = await page.evaluate(() => JSON.parse(localStorage.getItem('familie-app.event-tags')));
   console.log('A. tags na hernoemen:', JSON.stringify(tags));
-  if (!tags.ev1 || !tags.ev1.includes('Mick')) throw new Error('A: tags van Mick weggegooid bij hernoemen');
+  const ev1Names = tags.ev1 && (tags.ev1.names || tags.ev1);
+  if (!ev1Names || !ev1Names.includes('Mick')) throw new Error('A: tags van Mick weggegooid bij hernoemen');
   // zet naam terug -> tag weer bruikbaar (chip zou weer tonen); check dat Tags.getTags nog Mick geeft
   await page.click('#btn-settings');
   await page.fill('#input-members', 'Tim, Renate, Mick, Davi');

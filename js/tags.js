@@ -5,6 +5,10 @@
  * bewaard (localStorage), gekoppeld aan het event-id. Elk gezinslid krijgt
  * een vaste kleur uit het Google-palet; via de filterbalk kun je de agenda
  * per persoon filteren.
+ *
+ * Opslagformaat: event-id -> { names: string[], date: 'YYYY-MM-DD' }. De datum
+ * is de afspraakdatum en wordt gebruikt om tags van afspraken ouder dan 90
+ * dagen op te ruimen, zodat localStorage niet oneindig aangroeit.
  */
 const Tags = (() => {
   const MEMBERS_KEY = 'familie-app.members';
@@ -21,14 +25,24 @@ const Tags = (() => {
     { bg: '#e6f4ea', fg: '#137333', solid: '#34a853' }, // groen
   ];
 
+  // Tags van afspraken ouder dan dit aantal dagen worden opgeruimd, zodat
+  // localStorage niet oneindig aangroeit met tags van verleden afspraken.
+  const PRUNE_DAYS = 90;
+
   let members = [];
-  /** @type {Object<string, string[]>} event-id -> namen */
+  /** @type {Object<string, {names: string[], date: string}>} event-id -> {namen, afspraakdatum} */
   let tags = {};
   /** Actieve filterselectie (leeg = alles tonen). */
   let filter = new Set();
   let currentEventId = null;
+  let currentDateKey = null;
 
   // ---- Opslag ---------------------------------------------------------------
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
 
   function load() {
     try {
@@ -45,6 +59,36 @@ const Tags = (() => {
     } catch {
       tags = {};
     }
+    // Migratie van het oude formaat (event-id -> string[]) naar {names, date}.
+    // De datum is nog onbekend, dus vandaag als startpunt (krijgt zijn echte
+    // afspraakdatum zodra de afspraak weer gerenderd wordt).
+    for (const id of Object.keys(tags)) {
+      const value = tags[id];
+      if (Array.isArray(value)) {
+        tags[id] = { names: value, date: todayKey() };
+      } else if (!value || !Array.isArray(value.names)) {
+        delete tags[id];
+      }
+    }
+    pruneOldTags();
+  }
+
+  /** Verwijdert tags van afspraken die meer dan PRUNE_DAYS geleden waren. */
+  function pruneOldTags() {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - PRUNE_DAYS);
+    let changed = false;
+    for (const id of Object.keys(tags)) {
+      const date = tags[id] && tags[id].date;
+      if (!date) continue;
+      const [y, m, d] = date.split('-').map(Number);
+      if (new Date(y, m - 1, d) < cutoff) {
+        delete tags[id];
+        changed = true;
+      }
+    }
+    if (changed) save();
   }
 
   function save() {
@@ -76,7 +120,29 @@ const Tags = (() => {
   // ---- Tags per afspraak ------------------------------------------------------
 
   function getTags(eventId) {
-    return tags[eventId] || [];
+    const entry = tags[eventId];
+    return entry && Array.isArray(entry.names) ? entry.names : [];
+  }
+
+  /** Schrijft de tags van een afspraak weg, inclusief de afspraakdatum (voor opruimen). */
+  function writeTags(eventId, names, dateKey) {
+    const valid = names.filter((name) => members.includes(name));
+    if (valid.length > 0) {
+      const existing = tags[eventId] || {};
+      tags[eventId] = { names: valid, date: dateKey || existing.date || todayKey() };
+    } else {
+      delete tags[eventId];
+    }
+    save();
+  }
+
+  /** Werkt de bewaarde afspraakdatum bij zodra we hem bij het renderen kennen. */
+  function recordDate(eventId, dateKey) {
+    const entry = tags[eventId];
+    if (entry && dateKey && entry.date !== dateKey) {
+      entry.date = dateKey;
+      save();
+    }
   }
 
   /** Voldoet deze afspraak aan het actieve filter? */
@@ -85,7 +151,8 @@ const Tags = (() => {
     return getTags(eventId).some((name) => filter.has(name));
   }
 
-  function chipsFor(eventId) {
+  function chipsFor(eventId, dateKey) {
+    if (dateKey) recordDate(eventId, dateKey);
     // Alleen chips van huidige leden tonen; behouden tags van verwijderde/
     // hernoemde leden blijven bewaard maar worden niet weergegeven.
     const names = getTags(eventId).filter((name) => members.includes(name));
@@ -106,8 +173,9 @@ const Tags = (() => {
 
   // ---- Tag-dialog -------------------------------------------------------------
 
-  function openDialog(eventId, title) {
+  function openDialog(eventId, title, dateKey) {
     currentEventId = eventId;
+    currentDateKey = dateKey || null;
     document.getElementById('tags-event-title').textContent = title;
 
     const options = document.getElementById('tags-options');
@@ -128,9 +196,7 @@ const Tags = (() => {
         const current = new Set(getTags(currentEventId));
         if (checkbox.checked) current.add(name);
         else current.delete(name);
-        if (current.size > 0) tags[currentEventId] = [...current];
-        else delete tags[currentEventId];
-        save();
+        writeTags(currentEventId, [...current], currentDateKey);
         App.render();
       });
 
@@ -142,11 +208,8 @@ const Tags = (() => {
   }
 
   /** Tags direct zetten (bijv. bij het aanmaken van een nieuwe afspraak). */
-  function setTags(eventId, names) {
-    const valid = names.filter((name) => members.includes(name));
-    if (valid.length > 0) tags[eventId] = valid;
-    else delete tags[eventId];
-    save();
+  function setTags(eventId, names, dateKey) {
+    writeTags(eventId, names, dateKey);
   }
 
   /** Checklist met gezinsleden renderen (voor de nieuwe-afspraak-dialog). */

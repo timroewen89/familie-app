@@ -370,7 +370,7 @@ const Cal = (() => {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       );
       const names = Tags.readMemberChecklist(document.getElementById('event-tags'));
-      if (created.id && names.length) Tags.setTags(created.id, names);
+      if (created.id && names.length) Tags.setTags(created.id, names, dateStr);
       document.getElementById('event-dialog').close();
       refresh();
     } catch (err) {
