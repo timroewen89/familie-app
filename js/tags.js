@@ -212,16 +212,16 @@ const Tags = (() => {
   function init() {
     load();
 
-    // Gezinsleden bewerken via het instellingen-formulier.
-    document.getElementById('input-members').value = members.join(', ');
-    document.getElementById('settings-form').addEventListener('submit', () => {
-      setMembers(document.getElementById('input-members').value.split(','));
-      document.getElementById('input-members').value = members.join(', ');
-      App.render();
-    });
-
-    document.getElementById('btn-settings').addEventListener('click', () => {
-      document.getElementById('input-members').value = members.join(', ');
+    // Gezinsleden bewerken via het instellingen-formulier (centraal via Settings).
+    Settings.register({
+      onOpen: () => {
+        document.getElementById('input-members').value = members.join(', ');
+      },
+      onSave: () => {
+        setMembers(document.getElementById('input-members').value.split(','));
+        document.getElementById('input-members').value = members.join(', ');
+        App.render();
+      },
     });
   }
 

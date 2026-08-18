@@ -32,6 +32,24 @@ const Shopping = (() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }
 
+  /**
+   * Boodschappen-provider (bijv. Picnic) waar mandje-acties naartoe gaan.
+   * Standaard een no-op zodat de lijst zonder provider gewoon werkt en de
+   * init-volgorde van modules niet uitmaakt. Picnic registreert zich via
+   * setGroceryProvider().
+   */
+  let grocery = {
+    isReady: () => false,
+    buttonFor: () => null,
+    addToBasket: () => Promise.reject(new Error('geen boodschappenkoppeling actief')),
+    removeFromBasket: () => Promise.reject(new Error('geen boodschappenkoppeling actief')),
+  };
+
+  function setGroceryProvider(provider) {
+    grocery = { ...grocery, ...provider };
+    render();
+  }
+
   function saveFavorites() {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
   }
@@ -79,7 +97,7 @@ const Shopping = (() => {
     // Via Picnic-snelzoeken gekoppelde items ook uit het echte mandje halen —
     // behalve als het item al is afgevinkt (dan is het gewoon gekocht).
     if (item?.picnicId && item.picnicCount > 0 && !item.done) {
-      Picnic.removeFromBasket(item.picnicId, item.picnicCount).catch((err) => {
+      grocery.removeFromBasket(item.picnicId, item.picnicCount).catch((err) => {
         App.toast(`"${item.name}" is van de lijst, maar kon niet uit je Picnic-mandje `
           + `verwijderd worden (${App.friendlyError(err)}).`);
       });
@@ -143,9 +161,9 @@ const Shopping = (() => {
    */
   async function addFavoriteToList(fav) {
     const id = addItem(fav.name);
-    if (id && fav.picnicId && Picnic.isConfigured() && Picnic.isLoggedIn()) {
+    if (id && fav.picnicId && grocery.isReady()) {
       try {
-        await Picnic.addToBasket(fav.picnicId, 1);
+        await grocery.addToBasket(fav.picnicId, 1);
         setPicnicLink(id, fav.picnicId, 1, fav.name);
         App.toast(`"${fav.name}" op de lijst en in je Picnic-mandje.`);
       } catch (err) {
@@ -295,7 +313,7 @@ const Shopping = (() => {
       del.addEventListener('click', () => removeItem(item.id));
 
       li.append(checkbox, name);
-      const picnicBtn = Picnic.buttonFor(item);
+      const picnicBtn = grocery.buttonFor(item);
       if (picnicBtn) li.appendChild(picnicBtn);
       li.append(favBtn, del);
       list.appendChild(li);
@@ -333,5 +351,5 @@ const Shopping = (() => {
     document.getElementById('btn-share-list').addEventListener('click', shareList);
   }
 
-  return { init, rerender: render, addItem, renameItem, removeItem, setPicnicLink };
+  return { init, rerender: render, addItem, renameItem, removeItem, setPicnicLink, setGroceryProvider };
 })();

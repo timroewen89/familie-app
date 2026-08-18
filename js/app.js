@@ -282,10 +282,14 @@ const App = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
-  Picnic.init();
+  // Shopping eerst (laadt items), dan de modules die zich bij Settings/Shopping
+  // registreren, en als laatste Settings.init() dat de geregistreerde
+  // handlers aan het formulier hangt.
   Shopping.init();
+  Picnic.init();
   Tags.init();
   Cal.init();
+  Settings.init();
   App.init();
 });
 

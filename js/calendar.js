@@ -451,9 +451,8 @@ const Cal = (() => {
   }
 
   function openSettings() {
-    const dialog = document.getElementById('settings-dialog');
-    document.getElementById('input-client-id').value = config?.clientId || '';
-    dialog.showModal();
+    // Settings.open() vult de velden via de geregistreerde onOpen-callbacks.
+    Settings.open();
   }
 
   function init() {
@@ -462,7 +461,6 @@ const Cal = (() => {
     updateConnectButton();
 
     document.getElementById('btn-connect').addEventListener('click', connect);
-    document.getElementById('btn-settings').addEventListener('click', openSettings);
     document.getElementById('btn-calendars').addEventListener('click', openCalendarPicker);
     document.getElementById('btn-calendars-close').addEventListener('click', () => {
       document.getElementById('calendars-dialog').close();
@@ -476,21 +474,24 @@ const Cal = (() => {
       document.getElementById('event-times').hidden = e.target.checked;
     });
 
-    const dialog = document.getElementById('settings-dialog');
-    document.getElementById('settings-form').addEventListener('submit', () => {
-      const newClientId = document.getElementById('input-client-id').value.trim();
-      const changed = newClientId !== (config?.clientId || '');
-      saveConfig(newClientId);
-      if (changed) {
-        // Nieuwe Client-ID: tokenclient opnieuw initialiseren bij volgende verbinding.
-        tokenClient = null;
-        accessToken = null;
-        connected = false;
-        updateConnectButton();
-        if (hasConfig()) ensureTokenClient().catch(() => {});
-      }
+    Settings.register({
+      onOpen: () => {
+        document.getElementById('input-client-id').value = config?.clientId || '';
+      },
+      onSave: () => {
+        const newClientId = document.getElementById('input-client-id').value.trim();
+        const changed = newClientId !== (config?.clientId || '');
+        saveConfig(newClientId);
+        if (changed) {
+          // Nieuwe Client-ID: tokenclient opnieuw initialiseren bij volgende verbinding.
+          tokenClient = null;
+          accessToken = null;
+          connected = false;
+          updateConnectButton();
+          if (hasConfig()) ensureTokenClient().catch(() => {});
+        }
+      },
     });
-    document.getElementById('btn-settings-cancel').addEventListener('click', () => dialog.close());
 
     if (hasConfig()) {
       // GIS alvast laden: iOS Safari blokkeert de inlogpopup als die te lang

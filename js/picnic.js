@@ -495,25 +495,34 @@ const Picnic = (() => {
   function init() {
     load();
 
-    document.getElementById('input-picnic-url').value = config.proxyUrl || '';
-    document.getElementById('input-picnic-key').value = config.proxyKey || '';
-    document.getElementById('settings-form').addEventListener('submit', () => {
-      const newUrl = document.getElementById('input-picnic-url').value.trim();
-      const newKey = document.getElementById('input-picnic-key').value.trim();
-      if (newUrl !== (config.proxyUrl || '')) {
-        config.proxyUrl = newUrl || null;
-        if (!newUrl) config.authKey = null;
-      }
-      config.proxyKey = newKey || null;
-      save();
-      updateSettingsStatus();
-      updateQuickButton();
-      Shopping.rerender();
+    // Boodschappenmodule krijgt Picnic als "grocery provider" aangereikt, zodat
+    // Shopping niet rechtstreeks van de globale Picnic afhankelijk is.
+    Shopping.setGroceryProvider({
+      isReady: () => isConfigured() && isLoggedIn(),
+      buttonFor,
+      addToBasket,
+      removeFromBasket,
     });
-    document.getElementById('btn-settings').addEventListener('click', () => {
-      document.getElementById('input-picnic-url').value = config.proxyUrl || '';
-      document.getElementById('input-picnic-key').value = config.proxyKey || '';
-      updateSettingsStatus();
+
+    Settings.register({
+      onOpen: () => {
+        document.getElementById('input-picnic-url').value = config.proxyUrl || '';
+        document.getElementById('input-picnic-key').value = config.proxyKey || '';
+        updateSettingsStatus();
+      },
+      onSave: () => {
+        const newUrl = document.getElementById('input-picnic-url').value.trim();
+        const newKey = document.getElementById('input-picnic-key').value.trim();
+        if (newUrl !== (config.proxyUrl || '')) {
+          config.proxyUrl = newUrl || null;
+          if (!newUrl) config.authKey = null;
+        }
+        config.proxyKey = newKey || null;
+        save();
+        updateSettingsStatus();
+        updateQuickButton();
+        Shopping.rerender();
+      },
     });
     document.getElementById('btn-picnic-logout').addEventListener('click', () => {
       logout();
