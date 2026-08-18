@@ -3,7 +3,7 @@
  * en offline blijft werken (de boodschappenlijst werkt dan gewoon door;
  * alleen de Google Calendar-data vereist internet).
  */
-const CACHE_NAME = 'familie-app-v10';
+const CACHE_NAME = 'familie-app-v11';
 const APP_SHELL = [
   './',
   'index.html',
