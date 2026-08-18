@@ -102,6 +102,7 @@ const Picnic = (() => {
   async function request(method, path, body, withPicnicHeaders = false, includeAuth = true) {
     const headers = { 'Content-Type': 'application/json; charset=UTF-8' };
     if (includeAuth && config.authKey) headers['x-picnic-auth'] = config.authKey;
+    if (config.proxyKey) headers['x-proxy-key'] = config.proxyKey;
     if (withPicnicHeaders) Object.assign(headers, PICNIC_HEADERS);
 
     const response = await fetch(proxyBase() + API_PATH + path, {
@@ -344,9 +345,9 @@ const Picnic = (() => {
       img.className = 'picnic-result-img';
       img.loading = 'lazy';
       img.alt = '';
-      // CORS-modus: zo stuurt de browser de Origin-header mee en laat de
-      // proxy (die op origin controleert) de afbeelding door. Een gewone
-      // <img> stuurt geen Origin en zou een 403 krijgen.
+      // CORS-modus zodat de browser het antwoord van de proxy accepteert. De
+      // afbeeldingsroute in de Worker is bewust publiek (geen origin- of
+      // sleutelcontrole): productfoto's zijn geen credentials.
       img.crossOrigin = 'anonymous';
       img.src = `${proxyBase()}/static/images/${encodeURIComponent(unit.image_id)}/small.png`;
       // Als de afbeelding niet laadt (bijv. gewijzigde Picnic-API), gewoon weglaten.
@@ -474,19 +475,23 @@ const Picnic = (() => {
     load();
 
     document.getElementById('input-picnic-url').value = config.proxyUrl || '';
+    document.getElementById('input-picnic-key').value = config.proxyKey || '';
     document.getElementById('settings-form').addEventListener('submit', () => {
       const newUrl = document.getElementById('input-picnic-url').value.trim();
+      const newKey = document.getElementById('input-picnic-key').value.trim();
       if (newUrl !== (config.proxyUrl || '')) {
         config.proxyUrl = newUrl || null;
         if (!newUrl) config.authKey = null;
-        save();
       }
+      config.proxyKey = newKey || null;
+      save();
       updateSettingsStatus();
       updateQuickButton();
       Shopping.rerender();
     });
     document.getElementById('btn-settings').addEventListener('click', () => {
       document.getElementById('input-picnic-url').value = config.proxyUrl || '';
+      document.getElementById('input-picnic-key').value = config.proxyKey || '';
       updateSettingsStatus();
     });
     document.getElementById('btn-picnic-logout').addEventListener('click', () => {

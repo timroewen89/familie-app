@@ -85,11 +85,20 @@ Browsers mogen de Picnic-API niet rechtstreeks aanroepen; daarom draait er een p
 2. Klik **Edit code**, vervang de inhoud door [`worker/picnic-proxy.js`](worker/picnic-proxy.js) en klik **Deploy**.
 3. Kopieer de Worker-URL. (Let op: bij deze optie moet je wijzigingen aan de Worker later zelf opnieuw plakken.)
 
-De Worker slaat niets op en logt niets; hij geeft verzoeken alleen door en voegt de headers toe die Picnic verwacht. Door `ALLOWED_ORIGINS` kan alleen jouw eigen app hem gebruiken.
+De Worker geeft verzoeken alleen door en voegt de headers toe die Picnic verwacht. De `ALLOWED_ORIGINS` (CORS) beschermt tegen andere websites in een browser, maar niet tegen scripts die de Origin-header vervalsen — daarom is er ook een **gedeelde sleutel**.
+
+### Stap 1b: stel een proxy-sleutel in (belangrijk)
+
+Zonder sleutel is de proxy een open relay: iedereen die de URL raadt kan er ongelimiteerd Picnic-inlogpogingen doorheen sturen, op jouw Cloudflare-account. Stel daarom een geheim in:
+
+1. In de Cloudflare-dashboard bij je Worker: **Settings → Variables and Secrets → Add** → naam `PROXY_KEY`, type **Secret**, waarde een lange willekeurige tekst (bijv. uit een wachtwoordmanager). Of via de CLI: `npx wrangler secret put PROXY_KEY`.
+2. Dezelfde waarde vul je in de app in bij **⚙️ → Picnic → Proxy-sleutel**.
+
+Zolang `PROXY_KEY` niet is ingesteld werkt de proxy nog (alleen op origin), maar dat is onveilig. Overweeg daarnaast een Cloudflare rate-limiting-regel op `/api/*/user/login`.
 
 ### Stap 2: in de app
 
-1. Open **⚙️ → Picnic** en plak de Worker-URL.
+1. Open **⚙️ → Picnic** en vul de Worker-URL en de proxy-sleutel in.
 2. Tik op de rode **P** naast een boodschappenitem → log eenmalig in met je Picnic-account (SMS-code wordt ondersteund). Je wachtwoord wordt nooit opgeslagen; alleen het inlogtoken blijft lokaal in je browser (~30 dagen geldig, daarna log je gewoon opnieuw in).
 3. Kies een product uit de zoekresultaten en tik **＋ Mandje** — het staat direct in je Picnic-winkelmand.
 
@@ -98,5 +107,5 @@ De Worker slaat niets op en logt niets; hij geeft verzoeken alleen door en voegt
 - De agenda wordt benaderd met de scopes `calendar.readonly` (lezen) en `calendar.events` (afsprakenbeheer — de app gebruikt dit alleen om afspraken **aan te maken**; verwijderen of bewerken zit niet in de app). Agenda-instellingen of delen wijzigen kan met deze scopes sowieso niet.
 - Er is **geen API-key**: de Calendar API wordt aangeroepen met alleen het kortlevende OAuth-token, dat uitsluitend in het geheugen van de pagina leeft.
 - Client-ID, boodschappenlijst en persoonstags blijven in `localStorage` van je eigen browser; er is geen backend en er worden geen gegevens naar derden gestuurd.
-- De optionele Picnic-koppeling gebruikt jouw eigen proxy (die niets opslaat of logt); je Picnic-wachtwoord wordt alleen tijdens het inloggen versleuteld doorgestuurd en nooit bewaard — alleen het inlogtoken staat lokaal in je browser.
+- De optionele Picnic-koppeling gebruikt jouw eigen proxy. Je Picnic-wachtwoord wordt alleen tijdens het inloggen (binnen TLS) doorgestuurd en nooit bewaard; alleen het inlogtoken staat lokaal in je browser. Let op: het verkeer passeert wél jouw Cloudflare-Worker — de beheerder daarvan zou technisch logging kunnen inschakelen. Voor gebruik binnen je eigen gezin is dat vertrouwensmodel prima; deel de Worker niet met anderen.
 - De Client-ID is per ontwerp publiek en alleen bruikbaar vanaf de origins die jij in de Google Cloud Console toestaat.

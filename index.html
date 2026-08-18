@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Content-Security-Policy: beperkt waar scripts vandaan mogen komen en —
+       belangrijker — waarheen de app verbinding mag maken (connect-src), zodat
+       een eventuele XSS het Google- of Picnic-token niet naar een vreemde
+       server kan sturen. GitHub Pages kan geen HTTP-headers zetten; als meta
+       werkt het ook. Gebruik je een Picnic-proxy op een eigen domein (geen
+       *.workers.dev), voeg dat domein dan toe aan connect-src en img-src. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://*.workers.dev; img-src 'self' data: https://*.workers.dev; style-src 'self' 'unsafe-inline'; frame-src https://accounts.google.com https://content.googleapis.com; base-uri 'none'; object-src 'none'; manifest-src 'self'">
   <title>Familie App</title>
   <meta name="theme-color" content="#1a73e8">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -148,6 +155,10 @@
       <label>
         Proxy-URL
         <input type="url" id="input-picnic-url" placeholder="https://picnic-proxy.jouwnaam.workers.dev">
+      </label>
+      <label>
+        Proxy-sleutel
+        <input type="password" id="input-picnic-key" autocomplete="off" placeholder="zelfde waarde als PROXY_KEY in de Worker">
       </label>
       <p class="hint" id="picnic-status"></p>
       <button type="button" class="btn btn-ghost" id="btn-picnic-logout" hidden>Picnic-sessie wissen</button>
