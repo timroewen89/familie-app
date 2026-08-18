@@ -142,3 +142,12 @@ document.addEventListener('DOMContentLoaded', () => {
   Cal.init();
   App.init();
 });
+
+// PWA: service worker maakt de app installeerbaar en offline bruikbaar.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      // Offline-cache is optioneel; de app werkt ook zonder.
+    });
+  });
+}

@@ -7,6 +7,8 @@ Een lichtgewicht familie-webapp met een **weekoverzicht** gekoppeld aan Google C
 - 📅 **Weekoverzicht** (maandag t/m zondag) met navigatie *vorige / vandaag / volgende*; vandaag is gemarkeerd.
 - 🔗 **Google Calendar**: log in met je Google-account en zie de afspraken van de zichtbare week (alleen-lezen).
 - 🛒 **Boodschappenlijst**: items toevoegen, afvinken en verwijderen — persistent in je browser, werkt ook offline en zonder Google-login.
+- 📱 **Mobiel & installeerbaar (PWA)**: voeg de app toe aan je beginscherm (Android: menu → *App installeren*; iOS: deelknop → *Zet op beginscherm*). Dankzij een service worker start de app snel en werkt de boodschappenlijst ook offline.
+- 🎨 Kleurstelling gebaseerd op het Google Material-palet (blauw, rood, geel, groen).
 
 ## Lokaal draaien
 
@@ -43,6 +45,9 @@ De app bevat bewust **geen** API-keys of Client-ID's. Je maakt ze eenmalig zelf 
 ├── js/app.js       # Opstart, weeknavigatie, weekgrid renderen
 ├── js/calendar.js  # Google-login en events per week ophalen
 ├── js/shopping.js  # Boodschappenlijst met localStorage
+├── manifest.webmanifest  # PWA-manifest (installeerbaar op mobiel)
+├── sw.js           # Service worker: offline cache van de app-schil
+├── icons/          # App-iconen (SVG + PNG)
 └── PLAN.md         # Ontwerp en stappenplan
 ```
 
