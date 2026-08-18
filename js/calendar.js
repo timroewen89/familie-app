@@ -262,7 +262,7 @@ const Cal = (() => {
 
       const failed = results.filter((r) => r.status === 'rejected').length;
       if (ids.length === 0) {
-        setStatus('Geen agenda’s geselecteerd. Kies er één of meer via 📆.');
+        setStatus('Geen agenda’s geselecteerd. Kies er één of meer via de agenda-kiezer rechtsboven.');
       } else if (failed > 0) {
         setStatus(`${failed} van de ${ids.length} agenda's kon niet geladen worden.`, true);
       } else {
@@ -482,7 +482,7 @@ const Cal = (() => {
       // na de tik opent, dus het script moet klaarstaan vóór de klik.
       ensureTokenClient().catch(() => {});
     } else {
-      setStatus('Nog niet gekoppeld aan Google Calendar. Klik op ⚙️ om je Client-ID in te stellen.');
+      setStatus('Nog niet gekoppeld aan Google Calendar. Open de instellingen (rechtsboven) om je Client-ID in te stellen.');
     }
   }
 

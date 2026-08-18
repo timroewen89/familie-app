@@ -23,6 +23,11 @@
   box-sizing: border-box;
 }
 
+/* Het hidden-attribuut wint altijd, ook van display-regels zoals flex op .btn */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -71,10 +76,19 @@ body {
   font-size: 1.25rem;
   font-weight: 500;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .app-logo {
-  font-size: 1.35rem;
+  display: flex;
+  color: var(--g-blue-dark);
+}
+
+.app-logo .icon {
+  width: 1.35em;
+  height: 1.35em;
 }
 
 /* Tabs: op desktop rechts in de header, op mobiel als balk onderaan */
@@ -107,6 +121,10 @@ body {
 .tab.active {
   background: var(--today-bg);
   color: var(--g-blue-darker);
+}
+
+.tab-icon {
+  display: flex;
 }
 
 .tab-badge {
@@ -145,8 +163,9 @@ body {
     font-size: 0.75rem;
   }
 
-  .tab .tab-icon {
-    font-size: 1.25rem;
+  .tab .tab-icon .icon {
+    width: 1.45rem;
+    height: 1.45rem;
   }
 
   .tab-badge {
@@ -189,12 +208,30 @@ main {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-header h2 .icon {
+  color: var(--g-blue-dark);
+}
+
+/* Iconen: lijnstijl-SVG's die meekleuren met de tekst */
+.icon {
+  width: 1.2em;
+  height: 1.2em;
+  flex-shrink: 0;
 }
 
 /* Knoppen — Material-stijl: pilvorm, minimaal 44px aanraakvlak */
 .btn {
   font: inherit;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   min-height: 44px;
   padding: 0.5rem 1rem;
   border: 1px solid var(--border);
@@ -203,6 +240,12 @@ main {
   color: var(--g-blue-dark);
   cursor: pointer;
   transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Ronde knoppen met alleen een icoon */
+.icon-btn {
+  padding: 0.5rem;
+  min-width: 44px;
 }
 
 .btn:hover {

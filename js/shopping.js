@@ -85,10 +85,11 @@ const Shopping = (() => {
   }
 
   function flashShareButton(message) {
+    // innerHTML herstellen, want de knop bevat naast tekst ook een SVG-icoon.
     const btn = document.getElementById('btn-share-list');
-    const original = btn.textContent;
+    const original = btn.innerHTML;
     btn.textContent = message;
-    setTimeout(() => { btn.textContent = original; }, 2000);
+    setTimeout(() => { btn.innerHTML = original; }, 2000);
   }
 
   function render() {
@@ -124,7 +125,7 @@ const Shopping = (() => {
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'btn-delete';
-      del.textContent = '✕';
+      del.innerHTML = Icons.html('x');
       del.setAttribute('aria-label', `${item.name} verwijderen`);
       del.addEventListener('click', () => removeItem(item.id));
 
