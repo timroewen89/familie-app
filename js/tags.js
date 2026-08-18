@@ -9,7 +9,9 @@
 const Tags = (() => {
   const MEMBERS_KEY = 'familie-app.members';
   const TAGS_KEY = 'familie-app.event-tags';
-  const DEFAULT_MEMBERS = ['Tim', 'Renate', 'Mick', 'Davi'];
+  // Generieke plaatshouders: echte namen worden per gebruiker lokaal bewaard
+  // (via ⚙️) en horen niet in de publieke repo thuis.
+  const DEFAULT_MEMBERS = ['Ouder 1', 'Ouder 2', 'Kind 1', 'Kind 2'];
 
   // Google-kleuren met voldoende contrast (tint als achtergrond, donker als tekst).
   const COLORS = [

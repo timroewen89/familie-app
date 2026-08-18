@@ -86,11 +86,11 @@ const Picnic = (() => {
   }
 
   function isConfigured() {
-    return !!config.proxyUrl;
+    return !!(config && config.proxyUrl);
   }
 
   function isLoggedIn() {
-    return !!config.authKey;
+    return !!(config && config.authKey);
   }
 
   // ---- API via de proxy --------------------------------------------------------

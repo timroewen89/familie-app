@@ -291,6 +291,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // PWA: service worker maakt de app installeerbaar en offline bruikbaar.
 if ('serviceWorker' in navigator) {
+  // Bij een nieuwe versie neemt de bijgewerkte worker de pagina over
+  // (skipWaiting + clients.claim). Eén automatische herlaad haalt dan meteen
+  // de nieuwe bestanden op — geen 'twee keer verversen' meer. De guard
+  // voorkomt herladen bij de allereerste installatie (dan was er nog geen
+  // controller) en herlaad-lussen.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {
       // Offline-cache is optioneel; de app werkt ook zonder.
