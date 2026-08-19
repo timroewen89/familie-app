@@ -6,12 +6,24 @@
  * tombstone (deleted: true) in plaats van het item echt te wissen. Zo kan de
  * Sync-module (gedeelde gezinslijst via de Worker) per item last-writer-wins
  * mergen zonder dat een verwijderd item terugkomt via een verouderde telefoon.
- * Tombstones worden na 30 dagen lokaal opgeruimd.
+ * Tombstones worden na 90 dagen lokaal opgeruimd (de server bewaart ze 180).
  */
 const Shopping = (() => {
   const STORAGE_KEY = 'familie-app.shopping';
   const FAVORITES_KEY = 'familie-app.favorites';
-  const TOMBSTONE_MS = 30 * 24 * 60 * 60 * 1000;
+  // Lokaal prune-venster; de server bewaart tombstones nog langer (180d),
+  // zodat een lang offline telefoon een verwijdering niet laat herrijzen.
+  const TOMBSTONE_MS = 90 * 24 * 60 * 60 * 1000;
+
+  /**
+   * Monotone tijdstempel: altijd nieuwer dan de vorige versie van de entry,
+   * óók als de klok van dit toestel achterloopt op die van een gezinslid.
+   * Zo wint een bewuste lokale bewerking altijd van de versie die de
+   * gebruiker zojuist voor zich zag.
+   */
+  function nextStamp(previous) {
+    return Math.max(Date.now(), (previous || 0) + 1);
+  }
 
   /** @type {{id: string, name: string, done: boolean, updatedAt: number, deleted?: boolean}[]} */
   let items = [];
@@ -105,24 +117,28 @@ const Shopping = (() => {
     return item.id;
   }
 
-  /** Hernoemt een item, bijv. als het aantal in het Picnic-mandje wijzigt. */
+  /**
+   * Hernoemt een item, bijv. als het aantal in het Picnic-mandje wijzigt.
+   * Geeft false terug als het item er niet (meer) is — bijv. zojuist door een
+   * gezinslid verwijderd — zodat de aanroeper een nieuw item kan maken.
+   */
   function renameItem(id, name) {
-    const item = items.find((i) => i.id === id);
+    const item = items.find((i) => i.id === id && !i.deleted);
     const trimmed = name.trim();
-    if (item && trimmed) {
-      item.name = trimmed;
-      item.updatedAt = Date.now();
-      save();
-      render();
-      notifyChange();
-    }
+    if (!item || !trimmed) return false;
+    item.name = trimmed;
+    item.updatedAt = nextStamp(item.updatedAt);
+    save();
+    render();
+    notifyChange();
+    return true;
   }
 
   function toggleItem(id) {
     const item = items.find((i) => i.id === id);
     if (item) {
       item.done = !item.done;
-      item.updatedAt = Date.now();
+      item.updatedAt = nextStamp(item.updatedAt);
       save();
       render();
       notifyChange();
@@ -135,7 +151,7 @@ const Shopping = (() => {
     // Tombstone i.p.v. echt wissen, zodat de verwijdering ook op de telefoon
     // van je gezinslid aankomt (en niet terugkomt via diens oude staat).
     item.deleted = true;
-    item.updatedAt = Date.now();
+    item.updatedAt = nextStamp(item.updatedAt);
     save();
     render();
     notifyChange();
@@ -149,18 +165,21 @@ const Shopping = (() => {
     }
   }
 
-  /** Koppelt een lijstitem aan een Picnic-product, incl. het aantal en de productnaam. */
+  /**
+   * Koppelt een lijstitem aan een Picnic-product, incl. het aantal en de
+   * productnaam. Geeft false terug als het item er niet (meer) is.
+   */
   function setPicnicLink(id, productId, count, productName) {
-    const item = items.find((i) => i.id === id);
-    if (item) {
-      item.picnicId = productId;
-      item.picnicCount = count;
-      if (productName) item.picnicName = productName;
-      else if (!productId) delete item.picnicName;
-      item.updatedAt = Date.now();
-      save();
-      notifyChange();
-    }
+    const item = items.find((i) => i.id === id && !i.deleted);
+    if (!item) return false;
+    item.picnicId = productId;
+    item.picnicCount = count;
+    if (productName) item.picnicName = productName;
+    else if (!productId) delete item.picnicName;
+    item.updatedAt = nextStamp(item.updatedAt);
+    save();
+    notifyChange();
+    return true;
   }
 
   // ---- Favorieten -----------------------------------------------------------
@@ -192,7 +211,7 @@ const Shopping = (() => {
     if (existing) {
       // Bestond al (mogelijk als tombstone): aan/uit wisselen.
       existing.deleted = !existing.deleted;
-      existing.updatedAt = Date.now();
+      existing.updatedAt = nextStamp(existing.updatedAt);
       if (!existing.deleted) {
         existing.name = entry.name;
         existing.picnicId = entry.picnicId;
@@ -210,7 +229,7 @@ const Shopping = (() => {
     const existing = favorites.find((f) => favKey(f) === key);
     if (existing) {
       existing.deleted = true;
-      existing.updatedAt = Date.now();
+      existing.updatedAt = nextStamp(existing.updatedAt);
       saveFavorites();
       render();
       notifyChange();
@@ -276,11 +295,10 @@ const Shopping = (() => {
   }
 
   function clearDone() {
-    const now = Date.now();
     for (const item of items) {
       if (item.done && !item.deleted) {
         item.deleted = true;
-        item.updatedAt = now;
+        item.updatedAt = nextStamp(item.updatedAt);
       }
     }
     save();
@@ -415,16 +433,27 @@ const Shopping = (() => {
 
   /**
    * Samengevoegde staat van de server toepassen. Per entry wint de nieuwste
-   * updatedAt, óók tegenover lokale wijzigingen die tijdens het sync-verzoek
-   * zijn gedaan. Roept bewust GEEN notifyChange aan (geen sync-lus).
+   * updatedAt; bij exact gelijkspel wint eerst een verwijdering en anders de
+   * serverversie (de server is canoniek bij ties, zodat alle apparaten
+   * convergeren — de spiegel van de tie-regel in de Worker). Lokale
+   * wijzigingen die tijdens het sync-verzoek zijn gedaan hebben door de
+   * monotone stempel altijd een strikt nieuwere updatedAt en blijven dus
+   * behouden. Roept bewust GEEN notifyChange aan (geen sync-lus).
    */
   function applyMerged(serverItems, serverFavorites) {
+    const remoteWins = (remote, local) => {
+      const remoteAt = remote.updatedAt || 0;
+      const localAt = local.updatedAt || 0;
+      if (remoteAt !== localAt) return remoteAt > localAt;
+      if (!!remote.deleted !== !!local.deleted) return !!remote.deleted;
+      return true; // tie: serverantwoord is canoniek
+    };
     const mergeLWW = (localArr, serverArr) => {
       const map = new Map(localArr.map((e) => [e.id, e]));
       for (const remote of serverArr || []) {
         if (!remote || !remote.id) continue;
         const local = map.get(remote.id);
-        if (!local || (remote.updatedAt || 0) > (local.updatedAt || 0)) {
+        if (!local || remoteWins(remote, local)) {
           map.set(remote.id, remote);
         }
       }

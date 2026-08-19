@@ -24,6 +24,7 @@ const Sync = (() => {
   let dirty = false;
   let lastError = null;
   let lastSyncedAt = null;
+  let truncatedWarned = false; // waarschuw één keer per sessie, niet elke poll
 
   function load() {
     try {
@@ -54,14 +55,21 @@ const Sync = (() => {
     return !!(config.family && backend().url);
   }
 
-  /** Eén sync-ronde: volledige staat pushen, samengevoegde staat toepassen. */
-  async function syncNow() {
+  /**
+   * Eén sync-ronde: volledige staat pushen, samengevoegde staat toepassen.
+   * `fromMutation` geeft aan dat de ronde door een lokale wijziging komt:
+   * alleen dan zetten we `dirty` (zodat de wijziging gegarandeerd meegaat)
+   * en melden we een mislukking aan de gebruiker — een stille poll die
+   * faalt hoeft geen toast, de statusregel in instellingen volstaat.
+   */
+  async function syncNow(fromMutation = false) {
     if (!isEnabled()) return;
     if (syncing) {
-      dirty = true; // er kwam een mutatie binnen tijdens een lopende ronde
+      if (fromMutation) dirty = true; // mutatie tijdens lopende ronde: extra ronde nodig
       return;
     }
     syncing = true;
+    const family = config.family; // vastleggen: kan tijdens de fetch wisselen
     try {
       const { url, key } = backend();
       const state = Shopping.getSyncState();
@@ -72,7 +80,7 @@ const Sync = (() => {
           ...(key ? { 'x-proxy-key': key } : {}),
         },
         body: JSON.stringify({
-          family: config.family,
+          family,
           items: state.items,
           favorites: state.favorites,
         }),
@@ -82,17 +90,25 @@ const Sync = (() => {
         throw new Error(body?.error || `HTTP ${response.status}`);
       }
       const data = await response.json();
+      // Niet toepassen als de gezinscode intussen is gewijzigd: anders lekt
+      // de lijst van het oude gezin de nieuwe gedeelde lijst in.
+      if (config.family !== family) return;
       Shopping.applyMerged(data.items || [], data.favorites || []);
+      if (data.truncated && !truncatedWarned) {
+        truncatedWarned = true;
+        App.toast('De gedeelde lijst zit aan zijn maximum — niet alles wordt gedeeld. Ruim oude items op.');
+      }
       lastError = null;
       lastSyncedAt = new Date();
     } catch (err) {
       lastError = App.friendlyError(err);
+      if (fromMutation) App.toast(`Delen lukt nu niet: ${lastError}`);
     } finally {
       syncing = false;
       updateStatus();
       if (dirty) {
         dirty = false;
-        syncNow();
+        syncNow(true);
       }
     }
   }
@@ -134,9 +150,13 @@ const Sync = (() => {
       },
       onSave: () => {
         const code = document.getElementById('input-family-code').value.trim();
-        config.family = /^[A-Za-z0-9-]{6,64}$/.test(code) ? code : null;
-        if (code && !config.family) {
-          App.toast('Gezinscode niet opgeslagen: gebruik minimaal 6 tekens (letters, cijfers of streepjes).');
+        if (!code) {
+          config.family = null; // leeg veld = sync bewust uitzetten
+        } else if (/^[A-Za-z0-9-]{6,64}$/.test(code)) {
+          config.family = code;
+        } else {
+          // Ongeldige invoer: de bestaande (werkende) code niet weggooien.
+          App.toast('Gezinscode niet opgeslagen: gebruik 6–64 tekens (letters, cijfers of streepjes). Huidige instelling behouden.');
         }
         save();
         updateStatus();
@@ -145,7 +165,7 @@ const Sync = (() => {
     });
 
     // Na elke lokale mutatie snel pushen (de interval vangt de rest).
-    Shopping.onChange(() => syncNow());
+    Shopping.onChange(() => syncNow(true));
     // Bij terugkeer naar de app direct verversen.
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) syncNow();

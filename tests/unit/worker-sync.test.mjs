@@ -24,8 +24,15 @@ function mockD1() {
     async run() {
       if (sql.startsWith('CREATE TABLE')) return {};
       if (sql.startsWith('INSERT INTO entries')) {
+        // Emuleert de conditionele upsert: alleen schrijven als de nieuwe rij
+        // wint (nieuwere updated_at, of gelijk en verwijdering wint).
         const [family, id, kind, data, updatedAt, deleted] = args;
-        rows.set(`${family}|${id}`, { id, kind, data, updated_at: updatedAt, deleted });
+        const key = `${family}|${id}`;
+        const cur = rows.get(key);
+        const wins = !cur
+          || updatedAt > cur.updated_at
+          || (updatedAt === cur.updated_at && deleted > cur.deleted);
+        if (wins) rows.set(key, { id, kind, data, updated_at: updatedAt, deleted });
         return {};
       }
       if (sql.startsWith('DELETE FROM entries')) {
@@ -38,6 +45,11 @@ function mockD1() {
       throw new Error('onbekende SQL (run): ' + sql);
     },
     async all() {
+      if (sql.startsWith('SELECT COUNT(*) AS c FROM entries')) {
+        const [family] = args;
+        const c = [...rows.keys()].filter((key) => key.startsWith(`${family}|`)).length;
+        return { results: [{ c }] };
+      }
       if (sql.startsWith('SELECT id, kind, data, updated_at, deleted FROM entries')) {
         const [family] = args;
         const results = [...rows.entries()]
@@ -163,5 +175,40 @@ data = await res.json();
 const lang = data.items.find((i) => i.id === 'lang');
 check('lange naam afgekapt', lang && lang.name.length === 200);
 check('ongeldige entries genegeerd', !data.items.some((i) => i.id === '' || i.id === 'geen-tijd'));
+
+// 10. Klok-clamp: een ver-vooruitlopende klok kan entries niet 'bevriezen'
+res = await push(env, {
+  family: 'ons-gezin',
+  items: [{ id: 'toekomst', name: 'Tijdreiziger', updatedAt: NOW + 10 * 24 * 60 * 60 * 1000 }],
+});
+data = await res.json();
+const toekomst = data.items.find((i) => i.id === 'toekomst');
+check('toekomstige klok geklemd', toekomst && toekomst.updatedAt <= Date.now() + 61 * 1000);
+
+// 11. picnicCount wordt begrensd op 0–99
+res = await push(env, {
+  family: 'ons-gezin',
+  items: [{ id: 'veel', name: 'Chips', updatedAt: NOW - 50, picnicCount: 999 }],
+});
+data = await res.json();
+const veel = data.items.find((i) => i.id === 'veel');
+check('picnicCount begrensd op 99', veel && veel.picnicCount === 99);
+check('truncated is false bij normale push', data.truncated === false);
+
+// 12. Cap op items per push: extra items genegeerd + truncated-vlag
+res = await push(env, {
+  family: 'cap-gezin',
+  items: Array.from({ length: 405 }, (_, i) => ({ id: `c${i}`, name: `Item ${i}`, updatedAt: NOW - 1000 + i })),
+});
+data = await res.json();
+check('items-cap gehandhaafd (400)', data.items.length === 400);
+check('truncated gemeld bij cap', data.truncated === true);
+
+// 13. Volle database (>1000 rijen per gezin) → 413
+for (let i = 0; i < 1001; i++) {
+  db._rows.set(`vol-gezin|v${i}`, { id: `v${i}`, kind: 'item', data: '{"name":"x"}', updated_at: NOW, deleted: 0 });
+}
+res = await push(env, { family: 'vol-gezin', items: [] });
+check('volle lijst → 413', res.status === 413);
 
 console.log('WORKER-SYNC-TESTS GESLAAGD');

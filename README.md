@@ -122,9 +122,13 @@ De boodschappenlijst en favorieten kunnen tussen gezinsleden gesynchroniseerd wo
 
 1. Maak in Cloudflare een **D1-database** aan: dashboard → *Storage & Databases → D1 → Create* (naam bijv. `familie-app`), of via de CLI: `npx wrangler d1 create familie-app`.
 2. Open [`wrangler.toml`](wrangler.toml), haal de `#`'s weg voor het `[[d1_databases]]`-blok en plak jouw `database_id` erin. Commit/push — de Worker deployt automatisch mee.
-3. Kies samen **één gezinscode** (minimaal 6 tekens, letters/cijfers/streepjes, bijv. `ons-gezin-2026`) en vul die op elke telefoon in via **⚙️ → Samenwerken**. De Worker-URL en proxy-sleutel moeten daar ook ingevuld staan (zelfde als voor Picnic).
+3. Kies samen **één gezinscode** (6–64 tekens, letters/cijfers/streepjes) en vul die op elke telefoon in via **⚙️ → Samenwerken**. De Worker-URL en proxy-sleutel moeten daar ook ingevuld staan (zelfde als voor Picnic).
 
 Daarna synchroniseert de lijst elke paar seconden zolang de app open staat, en direct na elke wijziging. Offline werkt de lijst gewoon door; de eerstvolgende sync voegt alles weer samen.
+
+**Kies een moeilijk te raden gezinscode.** De code is — samen met de proxy-sleutel — de toegang tot jullie gedeelde lijst. Neem dus iets langs en willekeurigs (bijv. `K7-groene-fiets-2911`), geen namen of jaartallen. Zonder geldige `PROXY_KEY` weigert de Worker elke sync-aanroep, dus stel die zeker in (zie Picnic-setup hierboven).
+
+**Limieten.** Per gezin bewaart de Worker maximaal 400 lijstitems en 100 favorieten (oudste extra items worden genegeerd en de app meldt dit); verwijderde items worden na 180 dagen definitief opgeruimd. Ruim bij een volle lijst (foutmelding "gedeelde lijst is vol") oude items op.
 
 ### Volledig in de cloud (aanbevolen vervolgstap)
 

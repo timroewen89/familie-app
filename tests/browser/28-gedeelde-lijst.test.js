@@ -84,7 +84,14 @@ const { launch, BASE } = require('./_helpers');
   const status = await page.locator('#sync-status').textContent();
   console.log('4. status:', status.slice(0, 60));
   if (!/actief|gesynchroniseerd/i.test(status)) throw new Error('sync-status niet zichtbaar');
-  await page.tap('#btn-settings-cancel');
+
+  // 5. Ongeldige gezinscode opslaan → bestaande code blijft behouden
+  await page.fill('#input-family-code', 'a b!');
+  await page.click('#settings-form button[value=save]');
+  await page.waitForTimeout(200);
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('familie-app.sync')).family);
+  console.log('5. code na ongeldige invoer:', kept);
+  if (kept !== 'ons-gezin-2026') throw new Error('ongeldige invoer overschreef de werkende gezinscode');
   await page.close();
 
   // === Scenario 2: zonder gezinscode geen sync-verkeer ===
@@ -106,7 +113,7 @@ const { launch, BASE } = require('./_helpers');
   await page.tap('#shopping-form button[type=submit]');
   await page.waitForTimeout(600);
   const calls = await page.evaluate(() => window.__syncCalls);
-  console.log('5. sync-calls zonder gezinscode:', calls);
+  console.log('6. sync-calls zonder gezinscode:', calls);
   if (calls !== 0) throw new Error('sync-verkeer zonder gezinscode');
   await page.close();
 

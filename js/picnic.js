@@ -413,7 +413,12 @@ const Picnic = (() => {
         // Het getypte zoekwoord is verwerkt: veld leegmaken.
         document.getElementById('shopping-input').value = '';
       } else if (listItemId) {
-        Shopping.renameItem(listItemId, label);
+        if (!Shopping.renameItem(listItemId, label)) {
+          // Het item is intussen verwijderd (bijv. door een gezinslid via de
+          // gedeelde lijst): niet doorwerken op een tombstone, maar een vers
+          // item aanmaken dat de huidige mandje-stand weerspiegelt.
+          listItemId = Shopping.addItem(label);
+        }
         Shopping.setPicnicLink(listItemId, unit.id, inBasket, unit.name);
       }
     }

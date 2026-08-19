@@ -51,9 +51,17 @@ const ALLOWED_PATHS = [
 ];
 
 // Grenzen voor de gedeelde lijst (sanity limits per gezin).
-const SYNC_MAX_ENTRIES = 500;
+// Aparte plafonds zodat een lange lijst nooit stilletjes de favorieten wegdrukt.
+const SYNC_MAX_ITEMS = 400;
+const SYNC_MAX_FAVORITES = 100;
+const SYNC_MAX_ROWS_PER_FAMILY = 1000;
 const SYNC_MAX_NAME_LENGTH = 200;
-const SYNC_TOMBSTONE_MS = 30 * 24 * 60 * 60 * 1000; // verwijderingen 30 dagen bewaren
+// Server bewaart verwijderingen ruim langer dan de client (90d) lokaal doet,
+// zodat een lang offline telefoon een verwijderd item niet laat herrijzen.
+const SYNC_TOMBSTONE_MS = 180 * 24 * 60 * 60 * 1000;
+// Timestamps mogen hooguit iets in de toekomst liggen; een telefoon met een
+// ver voorlopende klok kan anders entries voor de rest onbewerkbaar maken.
+const SYNC_FUTURE_SLACK_MS = 60 * 1000;
 
 /** Constante-tijd vergelijking zodat de sleutel niet via timing te raden is. */
 function safeEqual(a, b) {
@@ -79,15 +87,21 @@ async function ensureSyncSchema(db) {
 /** Eén ruw item/favoriet uit de client normaliseren; null = ongeldig, negeren. */
 function sanitizeEntry(raw, kind) {
   if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id) return null;
-  const updatedAt = Number(raw.updatedAt);
+  let updatedAt = Number(raw.updatedAt);
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return null;
-  const name = String(raw.name || '').slice(0, SYNC_MAX_NAME_LENGTH);
+  // Klok-clamp: een voorlopende klok mag entries niet 'bevriezen' voor de rest.
+  updatedAt = Math.min(updatedAt, Date.now() + SYNC_FUTURE_SLACK_MS);
+  const rawName = String(raw.name || '');
+  const name = rawName.slice(0, SYNC_MAX_NAME_LENGTH);
+  // Als sanitatie de inhoud wijzigt, moet deze versie ook overal winnen —
+  // anders blijft de pushende telefoon eeuwig zijn eigen (langere) naam zien.
+  if (name !== rawName) updatedAt += 1;
   const data = kind === 'item'
     ? {
         name,
         done: !!raw.done,
         picnicId: typeof raw.picnicId === 'string' ? raw.picnicId.slice(0, 64) : null,
-        picnicCount: Number.isFinite(Number(raw.picnicCount)) ? Number(raw.picnicCount) : 0,
+        picnicCount: Math.max(0, Math.min(99, Number(raw.picnicCount) || 0)),
         picnicName: typeof raw.picnicName === 'string' ? raw.picnicName.slice(0, SYNC_MAX_NAME_LENGTH) : null,
       }
     : {
@@ -99,8 +113,13 @@ function sanitizeEntry(raw, kind) {
 
 /**
  * Gedeelde lijst: client stuurt zijn volledige staat, de Worker merget per
- * entry (last-writer-wins op updatedAt, tombstones voor verwijderingen) en
- * geeft de samengevoegde staat terug. Idempotent, dus pollen = pushen.
+ * entry en geeft de samengevoegde staat terug. Idempotent, dus pollen = pushen.
+ *
+ * De last-writer-wins-beslissing zit IN de SQL (conditionele upsert), niet in
+ * JavaScript: twee overlappende verzoeken kunnen elkaars nieuwere schrijfsels
+ * dan niet terugdraaien. Bij exact gelijke updatedAt wint een verwijdering;
+ * verder houdt de server zijn eigen rij en neemt de client het serverantwoord
+ * over (zie applyMerged), zodat alle apparaten convergeren.
  */
 async function handleSyncPush(request, env, corsHeaders) {
   const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
@@ -121,13 +140,46 @@ async function handleSyncPush(request, env, corsHeaders) {
       { status: 400, headers: jsonHeaders });
   }
 
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+  const rawFavorites = Array.isArray(body.favorites) ? body.favorites : [];
   const incoming = [
-    ...(Array.isArray(body.items) ? body.items : []).map((raw) => sanitizeEntry(raw, 'item')),
-    ...(Array.isArray(body.favorites) ? body.favorites : []).map((raw) => sanitizeEntry(raw, 'fav')),
-  ].filter(Boolean).slice(0, SYNC_MAX_ENTRIES);
+    ...rawItems.slice(0, SYNC_MAX_ITEMS).map((raw) => sanitizeEntry(raw, 'item')),
+    ...rawFavorites.slice(0, SYNC_MAX_FAVORITES).map((raw) => sanitizeEntry(raw, 'fav')),
+  ].filter(Boolean);
+  // Nooit stilletjes knippen: de client kan de gebruiker dan waarschuwen.
+  const truncated = rawItems.length > SYNC_MAX_ITEMS || rawFavorites.length > SYNC_MAX_FAVORITES;
 
   await ensureSyncSchema(env.DB);
 
+  // Grove rem op onbegrensde groei per gezin.
+  const count = await env.DB
+    .prepare('SELECT COUNT(*) AS c FROM entries WHERE family = ?')
+    .bind(family)
+    .all();
+  const existingRows = Number(count?.results?.[0]?.c) || 0;
+  if (existingRows > SYNC_MAX_ROWS_PER_FAMILY) {
+    return new Response(JSON.stringify({ error: 'gedeelde lijst is vol — ruim oude items op' }),
+      { status: 413, headers: jsonHeaders });
+  }
+
+  // Conditionele upsert: de winnaar wordt in SQL bepaald, atomair per rij,
+  // dus een tragere/oudere push kan een nieuwere rij nooit overschrijven.
+  const statements = incoming.map((entry) => env.DB
+    .prepare('INSERT INTO entries (family, id, kind, data, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?) '
+      + 'ON CONFLICT(family, id) DO UPDATE SET kind = excluded.kind, data = excluded.data, '
+      + 'updated_at = excluded.updated_at, deleted = excluded.deleted '
+      + 'WHERE excluded.updated_at > entries.updated_at '
+      + 'OR (excluded.updated_at = entries.updated_at AND excluded.deleted > entries.deleted)')
+    .bind(family, entry.id, entry.kind, JSON.stringify(entry.data), entry.updatedAt, entry.deleted ? 1 : 0));
+  // Oude tombstones opruimen zodat de tabel niet blijft groeien.
+  statements.push(env.DB
+    .prepare('DELETE FROM entries WHERE family = ? AND deleted = 1 AND updated_at < ?')
+    .bind(family, Date.now() - SYNC_TOMBSTONE_MS));
+  if (env.DB.batch) await env.DB.batch(statements);
+  else for (const stmt of statements) await stmt.run();
+
+  // Antwoord uit een VERSE select, zodat het exact de gecommitte staat is —
+  // ook als een gelijktijdig verzoek van de partner net iets won.
   const existing = await env.DB
     .prepare('SELECT id, kind, data, updated_at, deleted FROM entries WHERE family = ?')
     .bind(family)
@@ -140,28 +192,6 @@ async function handleSyncPush(request, env, corsHeaders) {
     });
   }
 
-  // Last-writer-wins per entry: nieuwere updatedAt wint, ongeacht de richting.
-  const changed = [];
-  for (const entry of incoming) {
-    const current = merged.get(entry.id);
-    if (!current || entry.updatedAt > current.updatedAt) {
-      merged.set(entry.id, entry);
-      changed.push(entry);
-    }
-  }
-
-  const statements = changed.map((entry) => env.DB
-    .prepare('INSERT INTO entries (family, id, kind, data, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?) '
-      + 'ON CONFLICT(family, id) DO UPDATE SET kind = excluded.kind, data = excluded.data, '
-      + 'updated_at = excluded.updated_at, deleted = excluded.deleted')
-    .bind(family, entry.id, entry.kind, JSON.stringify(entry.data), entry.updatedAt, entry.deleted ? 1 : 0));
-  // Oude tombstones opruimen zodat de tabel niet blijft groeien.
-  statements.push(env.DB
-    .prepare('DELETE FROM entries WHERE family = ? AND deleted = 1 AND updated_at < ?')
-    .bind(family, Date.now() - SYNC_TOMBSTONE_MS));
-  if (env.DB.batch) await env.DB.batch(statements);
-  else for (const stmt of statements) await stmt.run();
-
   const items = [];
   const favorites = [];
   let version = 0;
@@ -171,7 +201,7 @@ async function handleSyncPush(request, env, corsHeaders) {
     if (entry.kind === 'item') items.push(out);
     else favorites.push(out);
   }
-  return new Response(JSON.stringify({ version, items, favorites }), { status: 200, headers: jsonHeaders });
+  return new Response(JSON.stringify({ version, items, favorites, truncated }), { status: 200, headers: jsonHeaders });
 }
 
 export default {
