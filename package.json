@@ -1,0 +1,14 @@
+{
+  "name": "familie-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Familie-app: weekagenda (Google Calendar), boodschappenlijst en Picnic-koppeling. Dit package bestaat alleen voor de testsuite; de app zelf is een statische site zonder build-stap.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "test:unit": "node tests/run.js --unit",
+    "test:browser": "node tests/run.js --browser"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1"
+  }
+}

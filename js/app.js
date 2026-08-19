@@ -76,7 +76,7 @@ const App = (() => {
     return `Week ${isoWeekNumber(monday)} · ${from} – ${to}`;
   }
 
-  function buildEventElement(event) {
+  function buildEventElement(event, dayKey) {
     const el = document.createElement('div');
     el.className = 'event';
     if (event.allDay) el.classList.add('all-day');
@@ -88,7 +88,7 @@ const App = (() => {
     el.appendChild(time);
     el.appendChild(document.createTextNode(event.title));
 
-    const chips = Tags.chipsFor(event.id);
+    const chips = Tags.chipsFor(event.id, dayKey);
     if (chips) el.appendChild(chips);
 
     if (event.id) {
@@ -96,7 +96,7 @@ const App = (() => {
       el.tabIndex = 0; // focusbaar voor toetsenbord/VoiceOver
       el.setAttribute('aria-label', `${event.title}, tik om personen te taggen`);
       el.title = 'Tik om personen te taggen';
-      const open = () => Tags.openDialog(event.id, event.title);
+      const open = () => Tags.openDialog(event.id, event.title, dayKey);
       el.addEventListener('click', open);
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -136,7 +136,7 @@ const App = (() => {
       empty.textContent = Cal.isConnected() ? 'Geen afspraken' : '—';
       column.appendChild(empty);
     } else {
-      for (const event of events) column.appendChild(buildEventElement(event));
+      for (const event of events) column.appendChild(buildEventElement(event, key));
     }
     return column;
   }
@@ -282,10 +282,14 @@ const App = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
-  Picnic.init();
+  // Shopping eerst (laadt items), dan de modules die zich bij Settings/Shopping
+  // registreren, en als laatste Settings.init() dat de geregistreerde
+  // handlers aan het formulier hangt.
   Shopping.init();
+  Picnic.init();
   Tags.init();
   Cal.init();
+  Settings.init();
   App.init();
 });
 
