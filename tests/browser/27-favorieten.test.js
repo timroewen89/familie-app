@@ -51,6 +51,30 @@ const { launch, BASE, PNG_1PX } = require('./_helpers');
   console.log('2. favorieten na Picnic:', JSON.stringify(favNames));
   if (!favNames.includes('Beemster 48+')) throw new Error('Picnic-favoriet mist schone naam');
 
+  // 2b. Veel favorieten mogen de pagina niet breder maken dan het scherm:
+  // de chips horen binnen de favorietenbalk te scrollen (regressie: .panel
+  // groeide als grid-item mee met de nowrap-chips).
+  await page.evaluate(() => {
+    const favs = JSON.parse(localStorage.getItem('familie-app.favorites') || '[]');
+    for (let i = 0; i < 8; i++) favs.push({ id: 'fav-n:breed' + i, name: 'Favoriet product nummer ' + i, picnicId: null, updatedAt: Date.now() });
+    localStorage.setItem('familie-app.favorites', JSON.stringify(favs));
+  });
+  await page.reload();
+  await page.waitForSelector('#favorites-bar .favorite-add');
+  const widths = await page.evaluate(() => ({
+    inner: window.innerWidth,
+    doc: document.documentElement.scrollWidth,
+    barScroll: document.getElementById('favorites-bar').scrollWidth,
+    barClient: document.getElementById('favorites-bar').clientWidth,
+  }));
+  console.log('2b. breedtes:', JSON.stringify(widths));
+  if (widths.doc > widths.inner) throw new Error('pagina breder dan het scherm door favorieten');
+  if (widths.barScroll <= widths.barClient) throw new Error('favorietenbalk scrollt niet (chips passen onverwacht)');
+  await page.evaluate(() => {
+    const favs = JSON.parse(localStorage.getItem('familie-app.favorites')).filter((f) => !f.id.includes('breed'));
+    localStorage.setItem('familie-app.favorites', JSON.stringify(favs));
+  });
+
   // 3. Persistentie na herladen
   await page.reload();
   await page.waitForSelector('#favorites-bar .favorite-add');
