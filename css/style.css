@@ -203,6 +203,9 @@ main {
   border-radius: var(--radius);
   padding: 1rem;
   box-shadow: var(--shadow);
+  /* Grid-items hebben min-width:auto en groeien anders mee met brede inhoud
+     (zoals de favorietenchips), waardoor de hele pagina breder wordt. */
+  min-width: 0;
 }
 
 .panel-header {

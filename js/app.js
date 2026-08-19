@@ -287,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // handlers aan het formulier hangt.
   Shopping.init();
   Picnic.init();
+  Sync.init();
   Tags.init();
   Cal.init();
   Settings.init();

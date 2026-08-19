@@ -1,7 +1,19 @@
-# Cloudflare Workers-configuratie voor de Picnic-proxy.
+# Cloudflare Workers-configuratie voor de familie-app-Worker
+# (Picnic-proxy + gedeelde boodschappenlijst).
 # Wordt gebruikt door de Git-integratie van Cloudflare (Workers Builds):
 # elke push naar main deployt worker/picnic-proxy.js automatisch opnieuw.
 name = "picnic-proxy"
 main = "worker/picnic-proxy.js"
 compatibility_date = "2026-08-18"
 workers_dev = true
+
+# ── Gedeelde boodschappenlijst (Samenwerken) ────────────────────────────────
+# Maak eenmalig een D1-database aan (dashboard: Storage & Databases → D1 →
+# Create, naam bijv. "familie-app"; of CLI: npx wrangler d1 create familie-app),
+# plak hieronder de database_id, en haal de #'s weg. Zonder deze binding werkt
+# de rest van de Worker gewoon; alleen /sync geeft dan 501.
+#
+[[d1_databases]]
+binding = "DB"
+database_name = "familie-app"
+database_id = "4b778cfe-fffa-470b-8d35-6bac98206052"

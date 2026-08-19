@@ -11,6 +11,7 @@ Een lichtgewicht familie-webapp met een **weekoverzicht** gekoppeld aan Google C
 - 🏷️ **Persoonstags**: tik op een afspraak om gezinsleden te taggen, elk met een eigen kleur. De namen stel je zelf in via ⚙️ (standaard staan er generieke plaatshouders); ze worden alleen lokaal in je browser bewaard. Filter de agenda per persoon via de chips boven het overzicht. Tags worden lokaal bewaard (Google Calendar blijft alleen-lezen).
 - 🛒 **Boodschappenlijst**: items toevoegen, afvinken en verwijderen — persistent in je browser, werkt ook offline en zonder Google-login.
 - ⭐ **Favorieten**: markeer vaste boodschappen met de ster; via de favorietenbalk zet je ze in elke week met één tik terug op de lijst (en, als het een Picnic-product is en je bent ingelogd, meteen in je Picnic-mandje).
+- 👨‍👩‍👧‍👦 **Samenwerken**: deel de boodschappenlijst en favorieten met je gezin via een gezinscode — wijzigingen van iedereen worden binnen enkele seconden samengevoegd (zie "Samenwerken" hieronder).
 - 📱 **Mobiel & installeerbaar (PWA)**: voeg de app toe aan je beginscherm (Android: menu → *App installeren*; iOS: deelknop → *Zet op beginscherm*). Dankzij een service worker start de app snel en werkt de boodschappenlijst ook offline.
 - 🎨 Kleurstelling gebaseerd op het Google Material-palet (blauw, rood, geel, groen).
 
@@ -113,10 +114,30 @@ Zolang `PROXY_KEY` niet is ingesteld werkt de proxy nog (alleen op origin), maar
 2. Tik op de rode **P** naast een boodschappenitem → log eenmalig in met je Picnic-account (SMS-code wordt ondersteund). Je wachtwoord wordt nooit opgeslagen; alleen het inlogtoken blijft lokaal in je browser (~30 dagen geldig, daarna log je gewoon opnieuw in).
 3. Kies een product uit de zoekresultaten en tik **＋ Mandje** — het staat direct in je Picnic-winkelmand.
 
+## Samenwerken: gedeelde boodschappenlijst
+
+De boodschappenlijst en favorieten kunnen tussen gezinsleden gesynchroniseerd worden via je eigen Worker (D1-database, gratis). Persoonlijke gegevens (Google Client-ID, Picnic-token, proxy-sleutel) blijven per persoon lokaal — alleen de lijst zelf is gedeeld. Wijzigingen worden per item samengevoegd (nieuwste wint), dus jullie overschrijven elkaar niet; verwijderingen komen niet terug via een verouderde telefoon.
+
+### Eenmalige setup
+
+1. Maak in Cloudflare een **D1-database** aan: dashboard → *Storage & Databases → D1 → Create* (naam bijv. `familie-app`), of via de CLI: `npx wrangler d1 create familie-app`.
+2. Open [`wrangler.toml`](wrangler.toml), haal de `#`'s weg voor het `[[d1_databases]]`-blok en plak jouw `database_id` erin. Commit/push — de Worker deployt automatisch mee.
+3. Kies samen **één gezinscode** (6–64 tekens, letters/cijfers/streepjes) en vul die op elke telefoon in via **⚙️ → Samenwerken**. De Worker-URL en proxy-sleutel moeten daar ook ingevuld staan (zelfde als voor Picnic).
+
+Daarna synchroniseert de lijst elke paar seconden zolang de app open staat, en direct na elke wijziging. Offline werkt de lijst gewoon door; de eerstvolgende sync voegt alles weer samen.
+
+**Kies een moeilijk te raden gezinscode.** De code is — samen met de proxy-sleutel — de toegang tot jullie gedeelde lijst. Neem dus iets langs en willekeurigs (bijv. `K7-groene-fiets-2911`), geen namen of jaartallen. Zonder geldige `PROXY_KEY` weigert de Worker elke sync-aanroep, dus stel die zeker in (zie Picnic-setup hierboven).
+
+**Limieten.** Per gezin bewaart de Worker maximaal 400 lijstitems en 100 favorieten (oudste extra items worden genegeerd en de app meldt dit); verwijderde items worden na 180 dagen definitief opgeruimd. Ruim bij een volle lijst (foutmelding "gedeelde lijst is vol") oude items op.
+
+### Volledig in de cloud (aanbevolen vervolgstap)
+
+Wil je ook van het gedeelde `github.io`-domein af, verhuis de hosting dan naar **Cloudflare Pages** (zelfde Git-integratie: *Workers & Pages → Create → Pages → Import repository*). Zet daarna je nieuwe origin in de Worker via de env-var `ALLOWED_ORIGINS` (komma-gescheiden; Settings → Variables) of pas de lijst in `worker/picnic-proxy.js` aan, en voeg de origin toe aan de *Authorized JavaScript origins* van je Google Client-ID.
+
 ## Privacy & veiligheid
 
 - De agenda wordt benaderd met de scopes `calendar.readonly` (lezen) en `calendar.events` (afsprakenbeheer — de app gebruikt dit alleen om afspraken **aan te maken**; verwijderen of bewerken zit niet in de app). Agenda-instellingen of delen wijzigen kan met deze scopes sowieso niet.
 - Er is **geen API-key**: de Calendar API wordt aangeroepen met alleen het kortlevende OAuth-token, dat uitsluitend in het geheugen van de pagina leeft.
-- Client-ID, boodschappenlijst en persoonstags blijven in `localStorage` van je eigen browser; er is geen backend en er worden geen gegevens naar derden gestuurd.
+- Client-ID en persoonstags blijven in `localStorage` van je eigen browser. De boodschappenlijst en favorieten blijven ook lokaal, tenzij je "Samenwerken" aanzet — dan staan alleen díe gedeelde gegevens in jouw eigen D1-database (achter de proxy-sleutel en gezinscode), nooit bij een derde partij.
 - De optionele Picnic-koppeling gebruikt jouw eigen proxy. Je Picnic-wachtwoord wordt alleen tijdens het inloggen (binnen TLS) doorgestuurd en nooit bewaard; alleen het inlogtoken staat lokaal in je browser. Let op: het verkeer passeert wél jouw Cloudflare-Worker — de beheerder daarvan zou technisch logging kunnen inschakelen. Voor gebruik binnen je eigen gezin is dat vertrouwensmodel prima; deel de Worker niet met anderen.
 - De Client-ID is per ontwerp publiek en alleen bruikbaar vanaf de origins die jij in de Google Cloud Console toestaat.
