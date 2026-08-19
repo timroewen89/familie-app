@@ -1,15 +1,37 @@
 /**
  * Boodschappenlijst — items toevoegen, afvinken en verwijderen.
  * Alles wordt bewaard in localStorage zodat de lijst offline blijft werken.
+ *
+ * Sync-bewust: elke mutatie stempelt updatedAt, en verwijderen zet een
+ * tombstone (deleted: true) in plaats van het item echt te wissen. Zo kan de
+ * Sync-module (gedeelde gezinslijst via de Worker) per item last-writer-wins
+ * mergen zonder dat een verwijderd item terugkomt via een verouderde telefoon.
+ * Tombstones worden na 30 dagen lokaal opgeruimd.
  */
 const Shopping = (() => {
   const STORAGE_KEY = 'familie-app.shopping';
   const FAVORITES_KEY = 'familie-app.favorites';
+  const TOMBSTONE_MS = 30 * 24 * 60 * 60 * 1000;
 
-  /** @type {{id: string, name: string, done: boolean}[]} */
+  /** @type {{id: string, name: string, done: boolean, updatedAt: number, deleted?: boolean}[]} */
   let items = [];
-  /** Favorieten: vaste boodschappen die je snel opnieuw toevoegt. @type {{name: string, picnicId: string|null}[]} */
+  /** Favorieten: vaste boodschappen die je snel opnieuw toevoegt. @type {{id: string, name: string, picnicId: string|null, updatedAt: number, deleted?: boolean}[]} */
   let favorites = [];
+  /** Callback voor de Sync-module: aangeroepen na elke lokale mutatie. */
+  let changeListener = null;
+
+  /** Items/favorieten zonder tombstones — alles wat de UI toont. */
+  function activeItems() {
+    return items.filter((i) => !i.deleted);
+  }
+
+  function activeFavorites() {
+    return favorites.filter((f) => !f.deleted);
+  }
+
+  function notifyChange() {
+    if (changeListener) changeListener();
+  }
 
   function load() {
     try {
@@ -25,6 +47,18 @@ const Shopping = (() => {
       if (!Array.isArray(favorites)) favorites = [];
     } catch {
       favorites = [];
+    }
+    // Migratie: bestaande data zonder updatedAt/id stempelen, oude tombstones weg.
+    const now = Date.now();
+    const cutoff = now - TOMBSTONE_MS;
+    items = items.filter((i) => !(i.deleted && (i.updatedAt || 0) < cutoff));
+    for (const item of items) {
+      if (!item.updatedAt) item.updatedAt = now;
+    }
+    favorites = favorites.filter((f) => !(f.deleted && (f.updatedAt || 0) < cutoff));
+    for (const fav of favorites) {
+      if (!fav.id) fav.id = 'fav-' + favKey(fav);
+      if (!fav.updatedAt) fav.updatedAt = now;
     }
   }
 
@@ -62,10 +96,12 @@ const Shopping = (() => {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: trimmed,
       done: false,
+      updatedAt: Date.now(),
     };
     items.push(item);
     save();
     render();
+    notifyChange();
     return item.id;
   }
 
@@ -75,8 +111,10 @@ const Shopping = (() => {
     const trimmed = name.trim();
     if (item && trimmed) {
       item.name = trimmed;
+      item.updatedAt = Date.now();
       save();
       render();
+      notifyChange();
     }
   }
 
@@ -84,19 +122,26 @@ const Shopping = (() => {
     const item = items.find((i) => i.id === id);
     if (item) {
       item.done = !item.done;
+      item.updatedAt = Date.now();
       save();
       render();
+      notifyChange();
     }
   }
 
   function removeItem(id) {
     const item = items.find((i) => i.id === id);
-    items = items.filter((i) => i.id !== id);
+    if (!item) return;
+    // Tombstone i.p.v. echt wissen, zodat de verwijdering ook op de telefoon
+    // van je gezinslid aankomt (en niet terugkomt via diens oude staat).
+    item.deleted = true;
+    item.updatedAt = Date.now();
     save();
     render();
+    notifyChange();
     // Via Picnic-snelzoeken gekoppelde items ook uit het echte mandje halen —
     // behalve als het item al is afgevinkt (dan is het gewoon gekocht).
-    if (item?.picnicId && item.picnicCount > 0 && !item.done) {
+    if (item.picnicId && item.picnicCount > 0 && !item.done) {
       grocery.removeFromBasket(item.picnicId, item.picnicCount).catch((err) => {
         App.toast(`"${item.name}" is van de lijst, maar kon niet uit je Picnic-mandje `
           + `verwijderd worden (${App.friendlyError(err)}).`);
@@ -112,7 +157,9 @@ const Shopping = (() => {
       item.picnicCount = count;
       if (productName) item.picnicName = productName;
       else if (!productId) delete item.picnicName;
+      item.updatedAt = Date.now();
       save();
+      notifyChange();
     }
   }
 
@@ -135,24 +182,39 @@ const Shopping = (() => {
 
   function isFavorite(item) {
     const key = favKey(favEntryOf(item));
-    return favorites.some((f) => favKey(f) === key);
+    return activeFavorites().some((f) => favKey(f) === key);
   }
 
   function toggleFavorite(item) {
     const entry = favEntryOf(item);
     const key = favKey(entry);
-    const idx = favorites.findIndex((f) => favKey(f) === key);
-    if (idx >= 0) favorites.splice(idx, 1);
-    else favorites.push(entry);
+    const existing = favorites.find((f) => favKey(f) === key);
+    if (existing) {
+      // Bestond al (mogelijk als tombstone): aan/uit wisselen.
+      existing.deleted = !existing.deleted;
+      existing.updatedAt = Date.now();
+      if (!existing.deleted) {
+        existing.name = entry.name;
+        existing.picnicId = entry.picnicId;
+      }
+    } else {
+      favorites.push({ id: 'fav-' + key, ...entry, updatedAt: Date.now() });
+    }
     saveFavorites();
     render();
+    notifyChange();
   }
 
   function removeFavorite(fav) {
     const key = favKey(fav);
-    favorites = favorites.filter((f) => favKey(f) !== key);
-    saveFavorites();
-    render();
+    const existing = favorites.find((f) => favKey(f) === key);
+    if (existing) {
+      existing.deleted = true;
+      existing.updatedAt = Date.now();
+      saveFavorites();
+      render();
+      notifyChange();
+    }
   }
 
   /**
@@ -175,7 +237,8 @@ const Shopping = (() => {
   function renderFavorites() {
     const bar = document.getElementById('favorites-bar');
     bar.textContent = '';
-    if (favorites.length === 0) {
+    const visible = activeFavorites();
+    if (visible.length === 0) {
       bar.hidden = true;
       return;
     }
@@ -186,7 +249,7 @@ const Shopping = (() => {
     label.textContent = 'Favorieten';
     bar.appendChild(label);
 
-    for (const fav of favorites) {
+    for (const fav of visible) {
       const chip = document.createElement('div');
       chip.className = 'favorite-chip';
 
@@ -213,14 +276,21 @@ const Shopping = (() => {
   }
 
   function clearDone() {
-    items = items.filter((i) => !i.done);
+    const now = Date.now();
+    for (const item of items) {
+      if (item.done && !item.deleted) {
+        item.deleted = true;
+        item.updatedAt = now;
+      }
+    }
     save();
     render();
+    notifyChange();
   }
 
   /** De nog niet gekochte items als tekst, bijv. om in Picnic te gebruiken. */
   function openItemsText() {
-    return items.filter((i) => !i.done).map((i) => `• ${i.name}`).join('\n');
+    return activeItems().filter((i) => !i.done).map((i) => `• ${i.name}`).join('\n');
   }
 
   /**
@@ -271,7 +341,8 @@ const Shopping = (() => {
     updateBadge();
     renderFavorites();
 
-    if (items.length === 0) {
+    const visible = activeItems();
+    if (visible.length === 0) {
       const empty = document.createElement('li');
       empty.className = 'shopping-empty';
       empty.textContent = 'Nog geen boodschappen. Voeg iets toe!';
@@ -280,7 +351,7 @@ const Shopping = (() => {
       return;
     }
 
-    for (const item of items) {
+    for (const item of visible) {
       const li = document.createElement('li');
       if (item.done) li.classList.add('done');
 
@@ -319,20 +390,64 @@ const Shopping = (() => {
       list.appendChild(li);
     }
 
-    const doneCount = items.filter((i) => i.done).length;
-    counter.textContent = `${doneCount} van ${items.length} gedaan`;
+    const doneCount = visible.filter((i) => i.done).length;
+    counter.textContent = `${doneCount} van ${visible.length} gedaan`;
   }
 
   function updateShareButton() {
-    document.getElementById('btn-share-list').disabled = items.every((i) => i.done);
+    document.getElementById('btn-share-list').disabled = activeItems().every((i) => i.done);
   }
 
   /** Badge op de boodschappen-tab met het aantal nog te kopen items. */
   function updateBadge() {
     const badge = document.getElementById('shopping-badge');
-    const open = items.filter((i) => !i.done).length;
+    const open = activeItems().filter((i) => !i.done).length;
     badge.textContent = open;
     badge.hidden = open === 0;
+  }
+
+  // ---- Sync-API (gedeelde gezinslijst via de Sync-module) ---------------------
+
+  /** Volledige lokale staat, inclusief tombstones — precies wat de sync pusht. */
+  function getSyncState() {
+    return { items: [...items], favorites: [...favorites] };
+  }
+
+  /**
+   * Samengevoegde staat van de server toepassen. Per entry wint de nieuwste
+   * updatedAt, óók tegenover lokale wijzigingen die tijdens het sync-verzoek
+   * zijn gedaan. Roept bewust GEEN notifyChange aan (geen sync-lus).
+   */
+  function applyMerged(serverItems, serverFavorites) {
+    const mergeLWW = (localArr, serverArr) => {
+      const map = new Map(localArr.map((e) => [e.id, e]));
+      for (const remote of serverArr || []) {
+        if (!remote || !remote.id) continue;
+        const local = map.get(remote.id);
+        if (!local || (remote.updatedAt || 0) > (local.updatedAt || 0)) {
+          map.set(remote.id, remote);
+        }
+      }
+      return [...map.values()];
+    };
+    const mergedItems = mergeLWW(items, serverItems);
+    const mergedFavorites = mergeLWW(favorites, serverFavorites);
+    // Alleen opslaan/herrenderen bij een echte wijziging: de sync pollt elke
+    // paar seconden en het scherm mag niet verspringen als er niets is.
+    const changed = JSON.stringify(mergedItems) !== JSON.stringify(items)
+      || JSON.stringify(mergedFavorites) !== JSON.stringify(favorites);
+    items = mergedItems;
+    favorites = mergedFavorites;
+    if (changed) {
+      save();
+      saveFavorites();
+      render();
+    }
+  }
+
+  /** Registreert de callback die na elke lokale mutatie wordt aangeroepen. */
+  function onChange(listener) {
+    changeListener = listener;
   }
 
   function init() {
@@ -351,5 +466,8 @@ const Shopping = (() => {
     document.getElementById('btn-share-list').addEventListener('click', shareList);
   }
 
-  return { init, rerender: render, addItem, renameItem, removeItem, setPicnicLink, setGroceryProvider };
+  return {
+    init, rerender: render, addItem, renameItem, removeItem, setPicnicLink,
+    setGroceryProvider, getSyncState, applyMerged, onChange,
+  };
 })();

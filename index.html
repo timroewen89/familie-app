@@ -165,6 +165,18 @@
       <p class="hint" id="picnic-status"></p>
       <button type="button" class="btn btn-ghost" id="btn-picnic-logout" hidden>Picnic-sessie wissen</button>
 
+      <h3>Samenwerken (gedeelde lijst)</h3>
+      <p class="hint">
+        Kies samen één gezinscode (minimaal 6 tekens) en vul die op elke telefoon in.
+        De boodschappenlijst en favorieten worden dan via je eigen Worker gedeeld.
+        Zie de README, sectie "Samenwerken".
+      </p>
+      <label>
+        Gezinscode
+        <input type="text" id="input-family-code" autocomplete="off" placeholder="bijv. ons-gezin-2026">
+      </label>
+      <p class="hint" id="sync-status" role="status" aria-live="polite"></p>
+
       <div class="dialog-buttons">
         <button type="submit" class="btn btn-primary" value="save">Opslaan</button>
         <button type="button" class="btn btn-ghost" id="btn-settings-cancel">Annuleren</button>
@@ -279,6 +291,7 @@
 
   <script src="js/icons.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/picnic.js"></script>
   <script src="js/shopping.js"></script>
   <script src="js/tags.js"></script>
