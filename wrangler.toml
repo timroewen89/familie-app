@@ -13,7 +13,7 @@ workers_dev = true
 # plak hieronder de database_id, en haal de #'s weg. Zonder deze binding werkt
 # de rest van de Worker gewoon; alleen /sync geeft dan 501.
 #
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "familie-app"
-# database_id = "PLAK-HIER-JE-DATABASE-ID"
+[[d1_databases]]
+binding = "DB"
+database_name = "familie-app"
+database_id = "4b778cfe-fffa-470b-8d35-6bac98206052"
